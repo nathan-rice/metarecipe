@@ -1,1 +1,2 @@
-//# sourceMappingURL=tag-menu.js.map
+// 
+//# sourceMappingURL=tag-pallet.js.map

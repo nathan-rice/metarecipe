@@ -24,10 +24,12 @@ class Recipe(Base):
     # Do we want to rely on the total time value from page?  For now we will, can always remove it later
     total_time = sa.Column(sa.Time)
 
+
 class Ingredient(Base):
     __tablename__ = "ingredient"
     ingredient_id = sa.Column(sa.Integer, primary_key=True)
     ingredient_name = sa.Column(sa.Text)
+    # We need ingredient nutritional info here
 
 
 class RecipeIngredient(Base):
@@ -45,3 +47,4 @@ class RecipeIngredient(Base):
 
     recipe_id = sa.Column(sa.Integer(), sa.ForeignKey("recipe"))
     recipe = orm.relationship(Recipe, backref="ingredients")
+
