@@ -4,11 +4,11 @@
 // Definitions: https://github.com/borisyankov/DefinitelyTyped
 
 /// <reference path="../react/react.d.ts" />
-/// <reference path="../react-redux/redux.d.ts" />
+/// <reference path="../redux/redux.d.ts" />
 
-declare module "react-react-redux" {
+declare module "react-redux" {
   import { Component } from 'react';
-  import { Store, Dispatch, ActionCreator } from 'react-redux.d';
+  import { Store, Dispatch, ActionCreator } from 'redux';
 
   export class ElementClass extends Component<any, any> { }
   export interface ClassDecorator {

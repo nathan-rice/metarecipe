@@ -17,12 +17,26 @@ class RecipeDocument(Base):
 class Recipe(Base):
     __tablename__ = "recipe"
     recipe_id = sa.Column(sa.Integer, primary_key=True)
-
     preparation_time = sa.Column(sa.Time)
     cooking_time = sa.Column(sa.Time)
     other_time = sa.Column(sa.Time)
     # Do we want to rely on the total time value from page?  For now we will, can always remove it later
     total_time = sa.Column(sa.Time)
+
+
+class RecipeStep(Base):
+    __tablename__ = "recipe_step"
+    recipe_step_id = sa.Column(sa.Integer, primary_key=True)
+    text = sa.Column(sa.Text)
+    recipe_step_group_id = sa.Column(sa.Integer, sa.ForeignKey("recipe_step_group.recipe_step_group_id"))
+
+
+
+class RecipeStepGroup(Base):
+    __tablename__ = "recipe_step_group"
+    recipe_step_group_id = sa.Column(sa.Integer, primary_key=True)
+
+    steps = orm.relationship(RecipeStep)
 
 
 class Ingredient(Base):
