@@ -1,9 +1,9 @@
-from metarecipe.importer import HTMLImporter
+from itertools import islice
+from metarecipe.search import *
 
 if __name__ == "__main__":
-    recipe_document_1 = HTMLImporter.from_url("http://allrecipes.com/recipe/178526/johnson-family-cinnamon-rolls/")
-    recipe_document_2 = HTMLImporter.from_url("http://www.foodnetwork.com/recipes/paula-deen/cinnamon-rolls-recipe.html")
-    with open("foodnetwork-cinnamon-rolls.html", "w") as f:
-        f.write(recipe_document_2.html)
-    print "foo"
+    fn = FoodNetworkSearch("cinnamon rolls")
+    for recipe in islice(fn, 0, 10):
+        print recipe
+
 
