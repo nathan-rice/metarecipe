@@ -1,9 +1,6 @@
 /// <reference path="../../definitions/react/react.d.ts" />
 /// <reference path="../../definitions/react/react-global.d.ts" />
-/// <reference path="../../definitions/react-bootstrap/react-bootstrap.d.ts" />
 /// <reference path="../../api.ts" />
-
-import * as bs from "react-bootstrap";
 
 class SearchManager extends React.Component<any, any> {
     render() {
@@ -11,8 +8,11 @@ class SearchManager extends React.Component<any, any> {
             <div>
                 <h2>Working as intended</h2>
                 <form>
-                    <bs.Input type="text" label="Search term"/>
-                    <bs.Button>Search!</bs.Button>
+                    <div className="form-group">
+                        <label htmlFor="search_term">Search term</label>
+                        <div className="form-control"><input id="search_term" type="text"/></div>
+                    </div>
+                    <button type="submit">Search!</button>
                 </form>
             </div>
         )

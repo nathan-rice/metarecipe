@@ -1,12 +1,26 @@
 import requests
-import lxml
+import re
 from lxml.html.clean import Cleaner
 
 from . import models
 
 
-class HTMLImporterException(Exception):
+class ImporterException(Exception):
     pass
+
+
+class FoodComImporter(object):
+
+    json_extractor = re.compile(r"")
+
+    @classmethod
+    def from_url(cls, url):
+        response = requests.get(url)
+        if not response.ok:
+            raise ImporterException(response)
+        else:
+            recipe_proto_json = cls.json_extractor.findall(response.content)[0]
+            # This needs to be processed further before it can be parsed by json
 
 
 class HTMLImporter(object):
@@ -21,8 +35,8 @@ class HTMLImporter(object):
         # Using a generic metadata object here instead of individual parameters because they are likely to change
         response = requests.get(url)
         if not response.ok:
-            raise HTMLImporterException(response)
+            raise ImporterException(response)
         else:
             html = response.content
             safe_html = cls._sanitize_html(html)
-            return models.RecipeDocument(html=safe_html, source_url=url)
+            return models.RecipeDocument(html=safe_html, url=url)

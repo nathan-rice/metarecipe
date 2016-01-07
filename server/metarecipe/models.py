@@ -10,7 +10,7 @@ class RecipeDocument(Base):
     __tablename__ = "recipe_document"
     recipe_document_id = sa.Column(sa.Integer, primary_key=True)
     html = sa.Column(sa.Text)
-    source_url = sa.Column(sa.Text)
+    url = sa.Column(sa.Text)
     retrieval_timestamp = sa.Column(sa.DateTime)
 
 
