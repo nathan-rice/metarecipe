@@ -1,5 +1,4 @@
 from collections import namedtuple
-import exceptions
 import requests
 import re
 import urllib
@@ -10,7 +9,7 @@ from lxml import html
 SearchResult = namedtuple("SearchResult", ["title", "author", "url"])
 
 
-class SearchRequestException(exceptions.Exception):
+class SearchRequestException(Exception):
     pass
 
 
@@ -49,7 +48,8 @@ class FoodComSearch(BaseSearch):
 
     def get_results_page(self, page):
         params = {"pn": page}
-        response = requests.get("http://www.food.com/search/" + urllib.quote_plus(self.search_term), params=params)
+        quoted_search = urllib.parse.quote_plus(self.search_term)
+        response = requests.get("http://www.food.com/search/" + quoted_search, params=params)
         if not response.status_code == requests.codes.ok:
             raise SearchRequestException(response)
         recipe_json = self.json_extractor.findall(response.text)[0]

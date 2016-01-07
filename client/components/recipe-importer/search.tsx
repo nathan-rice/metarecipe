@@ -1,6 +1,8 @@
 /// <reference path="../../definitions/react/react.d.ts" />
 /// <reference path="../../definitions/react/react-global.d.ts" />
 /// <reference path="../../api.ts" />
+/// <reference path="../../definitions/redux-form/redux-form.d.ts" />
+
 
 class SearchManager extends React.Component<any, any> {
     render() {
@@ -10,9 +12,9 @@ class SearchManager extends React.Component<any, any> {
                 <form>
                     <div className="form-group">
                         <label htmlFor="search_term">Search term</label>
-                        <div className="form-control"><input id="search_term" type="text"/></div>
+                        <input className="form-control" id="search_term" type="text"/>
                     </div>
-                    <button type="submit">Search!</button>
+                    <button type="submit" onClick={}>Search!</button>
                 </form>
             </div>
         )

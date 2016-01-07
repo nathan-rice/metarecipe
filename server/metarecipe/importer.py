@@ -9,26 +9,15 @@ class ImporterException(Exception):
     pass
 
 
-class FoodComImporter(object):
-
-    json_extractor = re.compile(r"")
-
-    @classmethod
-    def from_url(cls, url):
-        response = requests.get(url)
-        if not response.ok:
-            raise ImporterException(response)
-        else:
-            recipe_proto_json = cls.json_extractor.findall(response.content)[0]
-            # This needs to be processed further before it can be parsed by json
-
-
 class HTMLImporter(object):
 
-    @staticmethod
-    def _sanitize_html(input_html):
+    _multiple_whitespace_cleaner = re.compile(r"\s+")
+
+    @classmethod
+    def _sanitize_html(cls, input_html):
         cleaner = Cleaner(remove_unknown_tags=False, allow_tags=["ol", "ul", "li", "p", "h1", "h2", "h3", "h4", "h5", "h6"])
-        return cleaner.clean_html(input_html)
+        cleaned_html = cleaner.clean_html(input_html)
+        return cls._multiple_whitespace_cleaner.sub(" ", cleaned_html)
 
     @classmethod
     def from_url(cls, url, metadata=None):
@@ -37,6 +26,6 @@ class HTMLImporter(object):
         if not response.ok:
             raise ImporterException(response)
         else:
-            html = response.content
+            html = response.text
             safe_html = cls._sanitize_html(html)
             return models.RecipeDocument(html=safe_html, url=url)

@@ -26,14 +26,20 @@ const reducer = function (state: Immutable.Map<string, any>, action) {
 const store = Redux.createStore(reducer);
 
 class ExternalRecipeSearch {
-    static foodCom(searchTerm: string, page: number = 1) {
-        jQuery.getJSON(endpoints.search.foodCom, {search: searchTerm, page: page}).then((data) => {
+
+    static searchAll(searchTerm: string) {
+        this.searchFoodCom(searchTerm);
+        this.searchFoodNetwork(searchTerm);
+    }
+
+    static searchFoodCom(searchTerm: string, page: number = 1) {
+        return jQuery.getJSON(endpoints.search.foodCom, {search: searchTerm, page: page}).then((data) => {
             store.dispatch({type: 'UPDATE_FOOD.COM_RESULTS', results: data.results, nextPage: data.next_page});
         });
     }
 
-    static foodNetwork(searchTerm: string, page: number = 1) {
-        jQuery.getJSON(endpoints.search.foodNetwork, {search: searchTerm, page: page}).then((data) => {
+    static searchFoodNetwork(searchTerm: string, page: number = 1) {
+        return jQuery.getJSON(endpoints.search.foodNetwork, {search: searchTerm, page: page}).then((data) => {
             store.dispatch({type: 'UPDATE_FOOD_NETWORK_RESULTS', results: data.results, nextPage: data.next_page});
         });
     }
