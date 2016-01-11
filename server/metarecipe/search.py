@@ -16,7 +16,7 @@ class SearchRequestException(Exception):
 class BaseSearch(object):
     def __init__(self, search_term, start_page=1):
         self.search_term = search_term
-        self.current_page = start_page
+        self.current_page = int(start_page)
 
     def get_next_results_page(self):
         results = self.get_results_page(self.current_page)
@@ -65,10 +65,16 @@ class FoodNetworkSearch(BaseSearch):
     @staticmethod
     def _format_result(recipe_etree):
         """Transforms a Food Network recipe search result element tree into a Metarecipe SearchResult object"""
-        (recipe_link, author_link) = recipe_etree.xpath("header/*/a")
+        links = recipe_etree.xpath("header/*/a")
+        recipe_link = links[0]
         title = recipe_link.text.strip()
-        author = author_link.text.strip()
         url = "http://www.foodnetwork.com" + recipe_link.attrib["href"]
+        if len(links) > 1:
+            author_link = links[1]
+            author = author_link.text.strip()
+        else:
+            author = ""
+
         return SearchResult(title, author, url)
 
     def get_results_page(self, page):
@@ -78,4 +84,4 @@ class FoodNetworkSearch(BaseSearch):
             raise SearchRequestException(response)
         root = html.fromstring(response.text)
         recipes = root.xpath(".//article[@class='recipe']")
-        return [self.format_result(recipe) for recipe in recipes]
+        return [self._format_result(recipe) for recipe in recipes]
