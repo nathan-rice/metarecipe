@@ -9,8 +9,11 @@ import reduxForm = require('redux-form');
 
 const endpoints = {
     search: {
-        foodNetwork: "/search/food_network/",
-        foodCom: "/search/food_com/"
+        bySite: {
+            foodNetwork: "/search/by_site/food_network/",
+            foodCom: "/search/by_site/food_com/"
+        },
+        retrieve: "/search/retrieve_results"
     }
 };
 
@@ -39,20 +42,29 @@ function getInitialState() {
 
 const reducers = {
     search: function (state: Immutable.Map<string, any>, action) {
+        var results;
         if (!state) {
             state = getInitialState();
         }
         switch (action.type) {
             case actions.search.foodCom.update:
+                results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
+                if (action.nextPage > 1) {
+                    results = state.getIn(["search", "food_com", "results"]).concat(results);
+                }
                 return state
-                    .mergeIn(["search", "food_com", "results"], action.results)
+                    .mergeIn(["search", "food_com", "results"], results)
                     .updateIn(["search", "food_com", "next_page"], () => action.nextPage);
             case actions.search.foodCom.toggleRetrieval:
                 return state
                     .updateIn(["search", "food_com", "retrieve", action.recipe.url], (val) => !val);
             case actions.search.foodNetwork.update:
+                results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
+                if (action.nextPage > 1) {
+                    results = state.getIn(["search", "food_network", "results"]).concat(results);
+                }
                 return state
-                    .mergeIn(["search", "food_network", "results"], action.results)
+                    .mergeIn(["search", "food_network", "results"], results)
                     .updateIn(["search", "food_network", "next_page"], () => action.nextPage);
             case actions.search.foodNetwork.toggleRetrieval:
                 return state
@@ -67,58 +79,82 @@ const reducer = Redux.combineReducers(reducers);
 
 export const store = Redux.createStore(reducer);
 
-class FoodNetworkRecipeSearch {
-    static search(searchTerm: string, page: number = 1): JQueryPromise<any> {
-        return jQuery.getJSON(endpoints.search.foodNetwork, {search: searchTerm, page: page}).then((data) => {
-            store.dispatch({type: actions.search.foodNetwork.update, results: data.results, nextPage: data.next_page});
+interface searchActions {
+    update: string,
+    toggleRetrieval: string
+}
+
+class RecipeSearch {
+    constructor(private endpoint: string, private actions: searchActions, private getState: Function) {
+        this.loadNextSearchPage = this.loadNextSearchPage.bind(this);
+    };
+
+    search(searchTerm: string, page: number = 1): JQueryPromise<any> {
+        return jQuery.getJSON(this.endpoint, {search: searchTerm, page: page}).then((data) => {
+            store.dispatch({type: this.actions.update, results: data.results, nextPage: data.next_page});
         });
     }
 
-    static getResults(): RecipeSearchResult[] {
-        let state = store.getState();
-        let networkState = state.search.get("search").get("food_network");
-        let results = networkState.get("results");
-        let resultsObjects = results.map(RecipeSearchResult.fromImmutableMap);
-        return resultsObjects.toJS();
+    loadNextSearchPage() {
+        return this.search(this.getSearchTerm(), this.getNextPage());
     }
 
-    static markRecipeForRetrieval(recipe: RecipeSearchResult) {
+    getSearchTerm(): string {
+        return store.getState().form.search.searchTerm.value;
+    }
 
+    getNextPage(): number {
+        return this.getState().get("next_page");
+    }
+
+    getResults(): RecipeSearchResult[] {
+        return this.getState().get("results");
+    }
+
+    toggleRetrieval(recipe: RecipeSearchResult) {
+        store.dispatch({type: this.actions.toggleRetrieval, recipe: recipe})
+    }
+
+    shouldRetrieve(recipe: RecipeSearchResult): boolean {
+        return this.getState().get("retrieve").get(recipe.url);
     }
 }
 
-class FoodComRecipeSearch {
+const FoodNetworkRecipeSearch = new RecipeSearch(
+    endpoints.search.bySite.foodNetwork,
+    actions.search.foodNetwork,
+    () => store.getState().search.get("search").get("food_network")
+);
 
-    static getResults(): RecipeSearchResult[] {
-        let state = store.getState();
-        let networkState = state.search.get("search").get("food_com");
-        let results = networkState.get("results");
-        let resultsObjects = results.map(RecipeSearchResult.fromImmutableMap);
-        return resultsObjects.toJS();
-    }
 
-    static search(searchTerm: string, page: number = 1): JQueryPromise<any> {
-        return jQuery.getJSON(endpoints.search.foodCom, {search: searchTerm, page: page}).then((data) => {
-            store.dispatch({type: actions.search.foodCom.update, results: data.results, nextPage: data.next_page});
-        });
-    }
-
-}
+const FoodComRecipeSearch = new RecipeSearch(
+    endpoints.search.bySite.foodCom,
+    actions.search.foodCom,
+    () => store.getState().search.get("search").get("food_com")
+);
 
 export class RecipeSearchResult {
-
     static fromImmutableMap(immutableMap): RecipeSearchResult {
         let title = immutableMap.get(0),
             author = immutableMap.get(1),
-            url = immutableMap.get(2);
-        return new RecipeSearchResult(title, author, url)
+            url = immutableMap.get(2),
+            id = immutableMap.get(3);
+        return new RecipeSearchResult(title, author, url, id)
     }
 
-    constructor(public title, public author, public url) {
+    static fromArray(array): RecipeSearchResult {
+        let title = array[0],
+            author = array[1],
+            url = array[2],
+            id = array[3];
+        return new RecipeSearchResult(title, author, url, id);
+    }
+
+    constructor(public title, public author, public url, public id) {
     }
 }
 
-export var search = {
+export const search = {
     foodCom: FoodComRecipeSearch,
     foodNetwork: FoodNetworkRecipeSearch
 };

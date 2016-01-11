@@ -6,7 +6,7 @@ import json
 from lxml import html
 
 
-SearchResult = namedtuple("SearchResult", ["title", "author", "url"])
+SearchResult = namedtuple("SearchResult", ["title", "author", "url", "result_id"])
 
 
 class SearchRequestException(Exception):
@@ -37,14 +37,14 @@ class FoodComSearch(BaseSearch):
     json_extractor = re.compile(r"var searchResults = (.*);\r\nFD.searchParameters")
 
     @staticmethod
-    def _format_result(recipe_data):
+    def _format_result(recipe_data, i):
         # The recipe data from food.com includes both the user's username and real name.  Leaning towards real
         # names. Note that food.com has made first and last names optional for the user.
         if "recipe_user_first_name" in recipe_data:
             name = " ".join((recipe_data["recipe_user_first_name"], recipe_data.get("recipe_user_last_name", "")))
         else:
             name = recipe_data["main_username"]
-        return SearchResult(recipe_data["main_title"], name, recipe_data["record_url"])
+        return SearchResult(recipe_data["main_title"], name, recipe_data["record_url"], i)
 
     def get_results_page(self, page):
         params = {"pn": page}
@@ -58,12 +58,13 @@ class FoodComSearch(BaseSearch):
             # about Food.com search functionality.
             return []
         recipe_data = json.loads(recipe_json)
-        return [self._format_result(recipe) for recipe in recipe_data["response"]["results"] if "recipe_id" in recipe]
+        return [self._format_result(recipe, (page - 1) * 10 + i) for (i, recipe) in
+                enumerate(recipe_data["response"]["results"]) if "recipe_id" in recipe]
 
 
 class FoodNetworkSearch(BaseSearch):
     @staticmethod
-    def _format_result(recipe_etree):
+    def _format_result(recipe_etree, i):
         """Transforms a Food Network recipe search result element tree into a Metarecipe SearchResult object"""
         links = recipe_etree.xpath("header/*/a")
         recipe_link = links[0]
@@ -75,7 +76,7 @@ class FoodNetworkSearch(BaseSearch):
         else:
             author = ""
 
-        return SearchResult(title, author, url)
+        return SearchResult(title, author, url, i)
 
     def get_results_page(self, page):
         params = {"searchTerm": self.search_term, "page": page}
@@ -84,4 +85,4 @@ class FoodNetworkSearch(BaseSearch):
             raise SearchRequestException(response)
         root = html.fromstring(response.text)
         recipes = root.xpath(".//article[@class='recipe']")
-        return [self._format_result(recipe) for recipe in recipes]
+        return [self._format_result(recipe, (page - 1) * 10 + i) for (i, recipe) in enumerate(recipes)]

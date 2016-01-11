@@ -6,7 +6,7 @@ from . import search
 recipe_search = Blueprint('recipe_search', __name__)
 
 
-@recipe_search.route('/food_network/')
+@recipe_search.route('/by_site/food_network/')
 def food_network():
     search_term = request.args.get("search")
     starting_page = request.args.get("page", 1)
@@ -15,7 +15,7 @@ def food_network():
     return jsonify(results=results, next_page=fn_search.current_page)
 
 
-@recipe_search.route('/food_com/')
+@recipe_search.route('/by_site/food_com/')
 def food_com():
     search_term = request.args.get("search")
     starting_page = request.args.get("page", 1)
@@ -24,3 +24,6 @@ def food_com():
     return jsonify(results=results, next_page=fc_search.current_page)
 
 
+@recipe_search.route('/retrieve', methods=["POST"])
+def retrieve():
+    config = request.get_json()

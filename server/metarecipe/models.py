@@ -1,69 +1,72 @@
-import sqlalchemy as sa
-import sqlalchemy.orm as orm
-from sqlalchemy.ext.declarative import declarative_base
+import datetime
+from flask_sqlalchemy import SQLAlchemy
 
-Base = declarative_base()
+db = SQLAlchemy()
 
 
-class RecipeDocument(Base):
+class RecipeDocument(db.Model):
     """Model to retain recipe provenance."""
     __tablename__ = "recipe_document"
-    recipe_document_id = sa.Column(sa.Integer, primary_key=True)
-    html = sa.Column(sa.Unicode)
-    url = sa.Column(sa.Text)
-    retrieval_timestamp = sa.Column(sa.DateTime)
+    recipe_document_id = db.Column(db.Integer, primary_key=True)
+    html = db.Column(db.Unicode)
+    url = db.Column(db.Text)
+    retrieval_timestamp = db.Column(db.DateTime)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.retrieval_timestamp = datetime.datetime.now()
 
 
-class Recipe(Base):
+class Recipe(db.Model):
     __tablename__ = "recipe"
-    recipe_id = sa.Column(sa.Integer, primary_key=True)
-    preparation_time = sa.Column(sa.Time)
-    cooking_time = sa.Column(sa.Time)
-    other_time = sa.Column(sa.Time)
+    recipe_id = db.Column(db.Integer, primary_key=True)
+    preparation_time = db.Column(db.Time)
+    cooking_time = db.Column(db.Time)
+    other_time = db.Column(db.Time)
     # Do we want to rely on the total time value from page?  For now we will, can always remove it later
-    total_time = sa.Column(sa.Time)
+    total_time = db.Column(db.Time)
 
 
-class Ingredient(Base):
+class Ingredient(db.Model):
     __tablename__ = "ingredient"
-    ingredient_id = sa.Column(sa.Integer, primary_key=True)
-    ingredient_name = sa.Column(sa.Text)
-    about = sa.Column(sa.Text)
-    culinary_history = sa.Column(sa.Text)
+    ingredient_id = db.Column(db.Integer, primary_key=True)
+    ingredient_name = db.Column(db.Text)
+    about = db.Column(db.Text)
+    culinary_history = db.Column(db.Text)
     # We need ingredient nutritional info here
 
 
-class RecipeIngredient(Base):
+class RecipeIngredient(db.Model):
     __tablename__ = "recipe_ingredient"
-    recipe_ingredient_id = sa.Column(sa.Integer, primary_key=True)
+    recipe_ingredient_id = db.Column(db.Integer, primary_key=True)
 
-    recipe_component = sa.Column(sa.Text)  # for recipes with multiple "parts"
+    recipe_component = db.Column(db.Text)  # for recipes with multiple "parts"
 
-    recipe_quantity = sa.Column(sa.Float)
-    recipe_quantity_units = sa.Column(sa.Text)
+    recipe_quantity = db.Column(db.Float)
+    recipe_quantity_units = db.Column(db.Text)
 
-    ingredient_id = sa.Column(sa.Integer, sa.ForeignKey("ingredient.ingredient_id"))
-    ingredient = orm.relationship(Ingredient, backref="recipe_instances")
-    ingredient_form = sa.Column(sa.Text)  # this might want to become its own entity
+    ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredient.ingredient_id"))
+    ingredient = db.relationship(Ingredient, backref="recipe_instances")
+    ingredient_form = db.Column(db.Text)  # this might want to become its own entity
 
-    recipe_id = sa.Column(sa.Integer(), sa.ForeignKey("recipe"))
-    recipe = orm.relationship(Recipe, backref="ingredients")
+    recipe_id = db.Column(db.Integer(), db.ForeignKey("recipe"))
+    recipe = db.relationship(Recipe, backref="ingredients")
 
 
-class RecipeStep(Base):
+class RecipeStep(db.Model):
     __tablename__ = "recipe_step"
-    recipe_step_id = sa.Column(sa.Integer, primary_key=True)
-    text = sa.Column(sa.Text)
+    recipe_step_id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text)
 
-    recipe_step_group_id = sa.Column(sa.Integer, sa.ForeignKey("recipe_step_group.recipe_step_group_id"))
-    recipe_step_group = orm.relationship("RecipeStepGroup")
+    recipe_step_group_id = db.Column(db.Integer, db.ForeignKey("recipe_step_group.recipe_step_group_id"))
+    recipe_step_group = db.relationship("RecipeStepGroup")
 
-    recipe_id = sa.Column(sa.Integer, sa.ForeignKey("recipe.recipe_id"))
-    recipe = orm.relationship(Recipe, backref="steps")
+    recipe_id = db.Column(db.Integer, db.ForeignKey("recipe.recipe_id"))
+    recipe = db.relationship(Recipe, backref="steps")
 
 
-class RecipeStepGroup(Base):
+class RecipeStepGroup(db.Model):
     __tablename__ = "recipe_step_group"
-    recipe_step_group_id = sa.Column(sa.Integer, primary_key=True)
+    recipe_step_group_id = db.Column(db.Integer, primary_key=True)
 
-    title = sa.Column(sa.Text)
+    title = db.Column(db.Text)
