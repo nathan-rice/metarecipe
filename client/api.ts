@@ -31,7 +31,7 @@ const actions = {
                 toggleRetrieval: 'FOOD_NETWORK_MARK_FOR_RETRIEVAL'
             }
         },
-        retrieve: 'RETRIEVE_SEARCH_RESULT_URLS'
+        retrieve: 'RETRIEVE_SEARCH_RESULTS_DOCUMENTS'
     }
 
 };
@@ -39,9 +39,13 @@ const actions = {
 function getInitialState() {
     return Immutable.fromJS({
         search: {
-            food_com: {results: [], retrieve: {}, next_page: 1},
-            food_network: {results: [], retrieve: {}, next_page: 1}
-        }
+            bySite: {
+                food_com: {results: [], retrieve: {}, next_page: 1},
+                food_network: {results: [], retrieve: {}, next_page: 1}
+            },
+            retrieve: []
+        },
+
     })
 }
 
@@ -55,25 +59,29 @@ const reducers = {
             case actions.search.bySite.foodCom.update:
                 results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
                 if (action.nextPage > 1) {
-                    results = state.getIn(["search", "food_com", "results"]).concat(results);
+                    results = state.getIn(["search", "bySite", "food_com", "results"]).concat(results);
                 }
                 return state
-                    .mergeIn(["search", "food_com", "results"], results)
-                    .updateIn(["search", "food_com", "next_page"], () => action.nextPage);
+                    .mergeIn(["search", "bySite", "food_com", "results"], results)
+                    .updateIn(["search", "bySite", "food_com", "next_page"], () => action.nextPage);
             case actions.search.bySite.foodCom.toggleRetrieval:
                 return state
-                    .updateIn(["search", "food_com", "retrieve", action.recipe.url], (val) => !val);
+                    .updateIn(["search", "bySite", "food_com", "retrieve", action.recipe.url], (val) => !val);
             case actions.search.bySite.foodNetwork.update:
                 results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
                 if (action.nextPage > 1) {
-                    results = state.getIn(["search", "food_network", "results"]).concat(results);
+                    results = state.getIn(["search", "bySite", "food_network", "results"]).concat(results);
                 }
                 return state
-                    .mergeIn(["search", "food_network", "results"], results)
-                    .updateIn(["search", "food_network", "next_page"], () => action.nextPage);
+                    .mergeIn(["search", "bySite", "food_network", "results"], results)
+                    .updateIn(["search", "bySite", "food_network", "next_page"], () => action.nextPage);
             case actions.search.bySite.foodNetwork.toggleRetrieval:
                 return state
-                    .updateIn(["search", "food_com", "retrieve", action.recipe.url], (val) => !val);
+                    .updateIn(["search", "bySite", "food_network", "retrieve", action.recipe.url], (val) => !val);
+            case actions.search.retrieve:
+                results = state.getIn(["search", "retrieve"]).concat(action.recipe_documents);
+                return state
+                    .mergeIn(["search", "retrieve"], results)
         }
         return state;
     },
@@ -123,19 +131,23 @@ export class RecipeSearch {
     shouldRetrieve(recipe: RecipeSearchResult): boolean {
         return this.getState().get("retrieve").get(recipe.url);
     }
+
+    taggedForRetrieval(): RecipeSearchResult[] {
+        return this.getState().get("results").filter(r => this.getState().get("retrieve").get(r.url));
+    }
 }
 
 const FoodNetworkRecipeSearch = new RecipeSearch(
     endpoints.search.bySite.foodNetwork,
     actions.search.bySite.foodNetwork,
-    () => store.getState().search.get("search").get("food_network")
+    () => store.getState().search.get("search").get("bySite").get("food_network")
 );
 
 
 const FoodComRecipeSearch = new RecipeSearch(
     endpoints.search.bySite.foodCom,
     actions.search.bySite.foodCom,
-    () => store.getState().search.get("search").get("food_com")
+    () => store.getState().search.get("search").get("bySite").get("food_com")
 );
 
 export class RecipeSearchResult {
@@ -160,8 +172,28 @@ export class RecipeSearchResult {
 }
 
 class SearchResultRetriever {
-    static retrieve(results: RecipeSearchResult[]) {
-        jQuery.post(endpoints.search.retrieve, results).then
+
+    constructor() {
+        this.retrieveSelected = this.retrieveSelected.bind(this);
+    }
+
+
+    retrieveSelected() {
+        let site, retrieve = [], tagged;
+        for (site in search.bySite) {
+            tagged = search.bySite[site].taggedForRetrieval();
+            retrieve = retrieve.concat(tagged.toJS());
+        }
+        return this.retrieve(retrieve);
+    }
+
+    retrieve(results: RecipeSearchResult[]) {
+        jQuery.ajax({
+            type: "POST",
+            url: endpoints.search.retrieve,
+            data: JSON.stringify(results),
+            contentType: "application/json; charset=utf-8"
+        }).then(data => store.dispatch({type: actions.search.retrieve, recipe_documents: data.recipe_documents}));
     }
 }
 
@@ -171,5 +203,5 @@ export const search = {
         foodCom: FoodComRecipeSearch,
         foodNetwork: FoodNetworkRecipeSearch
     },
-    retrieve: SearchResultRetriever
+    retrieve: new SearchResultRetriever()
 };

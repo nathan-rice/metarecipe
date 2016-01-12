@@ -29,13 +29,15 @@ def food_com():
 @recipe_search.route('/retrieve', methods=["POST"])
 def retrieve():
     targeted_results = request.get_json()
-    targeted_urls = [r.url for r in targeted_results]
+    targeted_urls = [r.get("url") for r in targeted_results]
     recipe_document_table = models.RecipeDocument.__table__
     url_column = recipe_document_table.c.url
     in_targeted_urls = url_column.in_(targeted_urls)
-    present_urls = set(e[0] for e in models.db.select([url_column]).where(in_targeted_urls).execute().fetchall())
-    recipe_documents = [models.RecipeDocument(url=target.url, html=importer.HTMLImporter.from_url(target.url))
-                        for target in targeted_results if target.url not in present_urls]
+    select = models.db.select([url_column]).where(in_targeted_urls)
+    present_urls = set(e[0] for e in models.db.engine.execute(select).fetchall())
+    recipe_documents = [importer.HTMLImporter.from_url(url) for url in targeted_urls if url not in present_urls]
     models.db.session.add_all(recipe_documents)
     models.db.session.commit()
+    return jsonify(recipe_documents=[document.as_dict for document in recipe_documents])
+
 

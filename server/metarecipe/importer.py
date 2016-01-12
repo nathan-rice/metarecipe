@@ -12,6 +12,7 @@ class ImporterException(Exception):
 class HTMLImporter(object):
 
     _multiple_whitespace_cleaner = re.compile(r"\s+")
+    _title_extractor = re.compile(r"<title>(.*)</title>", re.IGNORECASE)
 
     @classmethod
     def _sanitize_html(cls, input_html):
@@ -20,12 +21,14 @@ class HTMLImporter(object):
         return cls._multiple_whitespace_cleaner.sub(" ", cleaned_html)
 
     @classmethod
-    def from_url(cls, url, metadata=None):
-        # Using a generic metadata object here instead of individual parameters because they are likely to change
+    def from_url(cls, url):
         response = requests.get(url)
         if not response.ok:
             raise ImporterException(response)
         else:
             html = response.text
+            title_search = cls._title_extractor.search(html)
+            if title_search:
+                title = title_search.group(1)
             safe_html = cls._sanitize_html(html)
-            return models.RecipeDocument(html=safe_html, url=url)
+            return models.RecipeDocument(html=safe_html, url=url, title=title)

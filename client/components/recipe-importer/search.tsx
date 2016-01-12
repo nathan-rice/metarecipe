@@ -25,6 +25,9 @@ class BaseSearchManager extends React.Component<ISearchManagerProperties, any> {
                                results={api.search.bySite.foodNetwork.getResults()}/>
                 <SearchResults title="Food.com results" search={api.search.bySite.foodCom}
                                results={api.search.bySite.foodCom.getResults()}/>
+                <button onClick={api.search.retrieve.retrieveSelected} className="btn btn-primary">
+                    Retrieve selected results
+                </button>
             </div>
         )
     }

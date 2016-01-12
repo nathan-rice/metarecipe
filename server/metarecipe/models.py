@@ -8,13 +8,31 @@ class RecipeDocument(db.Model):
     """Model to retain recipe provenance."""
     __tablename__ = "recipe_document"
     recipe_document_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.Text)
     html = db.Column(db.Unicode)
     url = db.Column(db.Text, unique=True)
     retrieval_timestamp = db.Column(db.DateTime)
 
+    recipe_id = db.Column(db.Integer, db.ForeignKey("recipe.recipe_id"))
+    recipe = db.relationship("Recipe")
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.retrieval_timestamp = datetime.datetime.now()
+
+    @property
+    def as_dict(self):
+        return {
+            "recipe_document_id": self.recipe_document_id,
+            "title": self.title,
+            "html": self.html,
+            "url": self.url,
+            "retrieval_timestamp": self.retrieval_timestamp
+        }
+
+
+class RecipeDocumentTagSet(db.Model):
+    __tablename__ = "recipe_document_tagset"
 
 
 class Recipe(db.Model):
