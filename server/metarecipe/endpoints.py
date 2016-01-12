@@ -2,6 +2,8 @@ import json
 from flask import Blueprint, request, jsonify
 
 from . import search
+from . import models
+from . import importer
 
 recipe_search = Blueprint('recipe_search', __name__)
 
@@ -26,4 +28,14 @@ def food_com():
 
 @recipe_search.route('/retrieve', methods=["POST"])
 def retrieve():
-    config = request.get_json()
+    targeted_results = request.get_json()
+    targeted_urls = [r.url for r in targeted_results]
+    recipe_document_table = models.RecipeDocument.__table__
+    url_column = recipe_document_table.c.url
+    in_targeted_urls = url_column.in_(targeted_urls)
+    present_urls = set(e[0] for e in models.db.select([url_column]).where(in_targeted_urls).execute().fetchall())
+    recipe_documents = [models.RecipeDocument(url=target.url, html=importer.HTMLImporter.from_url(target.url))
+                        for target in targeted_results if target.url not in present_urls]
+    models.db.session.add_all(recipe_documents)
+    models.db.session.commit()
+

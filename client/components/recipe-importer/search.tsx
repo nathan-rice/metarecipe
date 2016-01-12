@@ -2,23 +2,29 @@
 /// <reference path="../../definitions/react/react-global.d.ts" />
 ///  <reference path="../../definitions/react-redux/react-redux.d.ts" />
 /// <reference path="../../definitions/redux-form/redux-form.d.ts" />
+/// <reference path="../../definitions/immutable/immutable.d.ts" />
 
 import api = require('api');
 import React = require('react');
 import reduxForm = require('redux-form');
 import ReactRedux = require('react-redux');
 
-class BaseSearchManager extends React.Component<any, any> {
+class ISearchManagerProperties {
+    search: api.RecipeSearch;
+    results: api.RecipeSearchResult[]
+}
+
+class BaseSearchManager extends React.Component<ISearchManagerProperties, any> {
 
     render() {
         return (
             <div>
                 <h2>Recipe search</h2>
                 <SearchTermInput />
-                <SearchResults title="Food Network results" search={api.search.foodNetwork}
-                               results={api.search.foodNetwork.getResults()}></SearchResults>
-                <SearchResults title="Food.com results" search={api.search.foodCom}
-                               results={api.search.foodCom.getResults()}></SearchResults>
+                <SearchResults title="Food Network results" search={api.search.bySite.foodNetwork}
+                               results={api.search.bySite.foodNetwork.getResults()}/>
+                <SearchResults title="Food.com results" search={api.search.bySite.foodCom}
+                               results={api.search.bySite.foodCom.getResults()}/>
             </div>
         )
     }
@@ -31,8 +37,8 @@ class BaseSearchTermInput extends React.Component<any, any> {
 
     submit(values) {
         if (values.searchTerm) {
-            api.search.foodNetwork.search(values.searchTerm);
-            api.search.foodCom.search(values.searchTerm);
+            api.search.bySite.foodNetwork.search(values.searchTerm);
+            api.search.bySite.foodCom.search(values.searchTerm);
         }
     }
 

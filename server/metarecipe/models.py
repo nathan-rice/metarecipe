@@ -9,7 +9,7 @@ class RecipeDocument(db.Model):
     __tablename__ = "recipe_document"
     recipe_document_id = db.Column(db.Integer, primary_key=True)
     html = db.Column(db.Unicode)
-    url = db.Column(db.Text)
+    url = db.Column(db.Text, unique=True)
     retrieval_timestamp = db.Column(db.DateTime)
 
     def __init__(self, **kwargs):

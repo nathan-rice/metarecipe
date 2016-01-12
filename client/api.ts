@@ -6,6 +6,7 @@
 import Redux = require('redux');
 import Immutable = require('immutable');
 import reduxForm = require('redux-form');
+import jQuery = require('jquery');
 
 const endpoints = {
     search: {
@@ -13,22 +14,26 @@ const endpoints = {
             foodNetwork: "/search/by_site/food_network/",
             foodCom: "/search/by_site/food_com/"
         },
-        retrieve: "/search/retrieve_results"
+        retrieve: "/search/retrieve"
     }
 };
 
 const actions = {
     search: {
-        foodCom: {
-            update: 'FOOD.COM_UPDATE_RESULTS',
-            toggleRetrieval: 'FOOD.COM_MARK_FOR_RETRIEVAL'
+        bySite: {
+            foodCom: {
+                update: 'FOOD.COM_UPDATE_RESULTS',
+                toggleRetrieval: 'FOOD.COM_MARK_FOR_RETRIEVAL'
 
+            },
+            foodNetwork: {
+                update: 'FOOD_NETWORK_UPDATE_RESULTS',
+                toggleRetrieval: 'FOOD_NETWORK_MARK_FOR_RETRIEVAL'
+            }
         },
-        foodNetwork: {
-            update: 'FOOD_NETWORK_UPDATE_RESULTS',
-            toggleRetrieval: 'FOOD_NETWORK_MARK_FOR_RETRIEVAL'
-        }
+        retrieve: 'RETRIEVE_SEARCH_RESULT_URLS'
     }
+
 };
 
 function getInitialState() {
@@ -47,7 +52,7 @@ const reducers = {
             state = getInitialState();
         }
         switch (action.type) {
-            case actions.search.foodCom.update:
+            case actions.search.bySite.foodCom.update:
                 results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
                 if (action.nextPage > 1) {
                     results = state.getIn(["search", "food_com", "results"]).concat(results);
@@ -55,10 +60,10 @@ const reducers = {
                 return state
                     .mergeIn(["search", "food_com", "results"], results)
                     .updateIn(["search", "food_com", "next_page"], () => action.nextPage);
-            case actions.search.foodCom.toggleRetrieval:
+            case actions.search.bySite.foodCom.toggleRetrieval:
                 return state
                     .updateIn(["search", "food_com", "retrieve", action.recipe.url], (val) => !val);
-            case actions.search.foodNetwork.update:
+            case actions.search.bySite.foodNetwork.update:
                 results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
                 if (action.nextPage > 1) {
                     results = state.getIn(["search", "food_network", "results"]).concat(results);
@@ -66,7 +71,7 @@ const reducers = {
                 return state
                     .mergeIn(["search", "food_network", "results"], results)
                     .updateIn(["search", "food_network", "next_page"], () => action.nextPage);
-            case actions.search.foodNetwork.toggleRetrieval:
+            case actions.search.bySite.foodNetwork.toggleRetrieval:
                 return state
                     .updateIn(["search", "food_com", "retrieve", action.recipe.url], (val) => !val);
         }
@@ -84,7 +89,7 @@ interface searchActions {
     toggleRetrieval: string
 }
 
-class RecipeSearch {
+export class RecipeSearch {
     constructor(private endpoint: string, private actions: searchActions, private getState: Function) {
         this.loadNextSearchPage = this.loadNextSearchPage.bind(this);
     };
@@ -122,14 +127,14 @@ class RecipeSearch {
 
 const FoodNetworkRecipeSearch = new RecipeSearch(
     endpoints.search.bySite.foodNetwork,
-    actions.search.foodNetwork,
+    actions.search.bySite.foodNetwork,
     () => store.getState().search.get("search").get("food_network")
 );
 
 
 const FoodComRecipeSearch = new RecipeSearch(
     endpoints.search.bySite.foodCom,
-    actions.search.foodCom,
+    actions.search.bySite.foodCom,
     () => store.getState().search.get("search").get("food_com")
 );
 
@@ -154,7 +159,17 @@ export class RecipeSearchResult {
     }
 }
 
+class SearchResultRetriever {
+    static retrieve(results: RecipeSearchResult[]) {
+        jQuery.post(endpoints.search.retrieve, results).then
+    }
+}
+
+
 export const search = {
-    foodCom: FoodComRecipeSearch,
-    foodNetwork: FoodNetworkRecipeSearch
+    bySite: {
+        foodCom: FoodComRecipeSearch,
+        foodNetwork: FoodNetworkRecipeSearch
+    },
+    retrieve: SearchResultRetriever
 };
