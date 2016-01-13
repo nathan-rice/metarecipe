@@ -1,4 +1,7 @@
 import datetime
+
+import re
+from lxml.html import fromstring
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -33,6 +36,21 @@ class RecipeDocument(db.Model):
 
 class RecipeDocumentTagSet(db.Model):
     __tablename__ = "recipe_document_tagset"
+    _word_re = re.compile(r"(\d+\s*\d?[/⁄]?\d?|[-'\w]+|[:°.])")
+    recipe_document_tagset_id = db.Column(db.Integer, primary_key=True)
+
+    def __init__(self, html, **kwargs):
+        document_words = []
+        document = fromstring(html)
+
+        def extract_words(tag):
+            return self._word_re(d.xpath("string()")).findall()
+        decendant_words = [{d.tag: "x"}
+                           for d in document.iterdescendants() if d.tag is not "ul"]
+        for tag in document.iterdescendants():
+            pass
+
+
 
 
 class Recipe(db.Model):
