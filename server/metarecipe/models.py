@@ -1,7 +1,9 @@
 import datetime
 
 import re
-from lxml.html import fromstring
+import lxml.html
+from collections import defaultdict
+from itertools import count
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -19,9 +21,35 @@ class RecipeDocument(db.Model):
     recipe_id = db.Column(db.Integer, db.ForeignKey("recipe.recipe_id"))
     recipe = db.relationship("Recipe")
 
+    _word_re = re.compile(r"(\d+\s*\d?[/⁄]?\d?|[-'\w]+|[:°.])")
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
         self.retrieval_timestamp = datetime.datetime.now()
+        self.words = self.get_document_words(self.html)
+
+    @classmethod
+    def get_document_words(cls, html):
+
+        def extract_words(text):
+            return [word_.strip() for word_ in cls._word_re.findall(text or '')]
+
+        results = []
+        document = lxml.html.fromstring(html)
+        elements = document.iter()
+        document_position = count()
+        element_position = defaultdict(lambda: count())
+        for element in elements:
+            text_words = extract_words(element.text)
+            tail_words = extract_words(element.tail)
+            for (doc_pos, el_pos, word) in zip(document_position, element_position[element], text_words):
+                results.append(RecipeDocumentWord(word=word, document_position=doc_pos, element_position=el_pos,
+                                                  element_tag=element.tag))
+            for (doc_pos, el_pos, word) in zip(document_position, element_position[element.getparent()], tail_words):
+                results.append(RecipeDocumentWord(word=word, document_position=doc_pos, element_position=el_pos,
+                                                  element_tag=element.getparent().tag))
+        return results
 
     @property
     def as_dict(self):
@@ -35,22 +63,45 @@ class RecipeDocument(db.Model):
 
 
 class RecipeDocumentTagSet(db.Model):
-    __tablename__ = "recipe_document_tagset"
-    _word_re = re.compile(r"(\d+\s*\d?[/⁄]?\d?|[-'\w]+|[:°.])")
+    __tablename__ = "recipe_document_tag_set"
     recipe_document_tagset_id = db.Column(db.Integer, primary_key=True)
 
-    def __init__(self, html, **kwargs):
-        document_words = []
-        document = fromstring(html)
-
-        def extract_words(tag):
-            return self._word_re(d.xpath("string()")).findall()
-        decendant_words = [{d.tag: "x"}
-                           for d in document.iterdescendants() if d.tag is not "ul"]
-        for tag in document.iterdescendants():
-            pass
+    recipe_document_id = db.Column(db.Integer, db.ForeignKey(RecipeDocument.recipe_document_id))
+    recipe_document = db.relationship(RecipeDocument, backref="tag_sets")
 
 
+class RecipeDocumentWord(db.Model):
+    __tablename__ = "recipe_document_word"
+    recipe_document_word_id = db.Column(db.Integer, primary_key=True)
+    word = db.Column(db.Unicode)
+    document_position = db.Column(db.Integer)
+    element_position = db.Column(db.Integer)
+    element_tag = db.Column(db.Text)
+
+    recipe_document_id = db.Column(db.Integer, db.ForeignKey(RecipeDocument.recipe_document_id))
+    recipe_document = db.relationship(RecipeDocument, backref="words")
+
+    @property
+    def as_dict(self):
+        return {
+            "recipe_document_word_id": self.recipe_document_word_id,
+            "word": self.word,
+            "document_position": self.document_position,
+            "element_position": self.element_position,
+            "element_tag": self.element_tag
+        }
+
+
+class RecipeDocumentWordTag(db.Model):
+    __tabname__ = "recipe_document_word_tag"
+    recipe_document_word_tag_id = db.Column(db.Integer, primary_key=True)
+    tag = db.Column(db.Unicode)
+
+    recipe_document_word_id = db.Column(db.Integer, db.ForeignKey(RecipeDocumentWord.recipe_document_word_id))
+    word = db.relationship(RecipeDocumentWord, backref="tags")
+
+    recipe_document_tag_set_id = db.Column(db.Integer, db.ForeignKey(RecipeDocumentTagSet.recipe_document_tagset_id))
+    tag_set = db.relationship(RecipeDocumentTagSet, backref="tags")
 
 
 class Recipe(db.Model):

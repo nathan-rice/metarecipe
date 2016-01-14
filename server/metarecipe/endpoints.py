@@ -7,6 +7,8 @@ from . import importer
 
 recipe_search = Blueprint('recipe_search', __name__)
 
+crud = Blueprint('crud', __name__)
+
 
 @recipe_search.route('/by_site/food_network/')
 def food_network():
@@ -40,4 +42,12 @@ def retrieve():
     models.db.session.commit()
     return jsonify(recipe_documents=[document.as_dict for document in recipe_documents])
 
+
+@crud.route('/recipe_document/<int:document_id>/words/')
+def get_recipe_document_words(document_id):
+    words = models.RecipeDocumentWord.query\
+        .filter(models.RecipeDocumentWord.recipe_document_id == document_id)\
+        .order_by(models.RecipeDocumentWord.document_position)\
+        .all()
+    return jsonify(words=[word.as_dict for word in words])
 

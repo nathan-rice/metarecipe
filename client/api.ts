@@ -177,7 +177,6 @@ class SearchResultRetriever {
         this.retrieveSelected = this.retrieveSelected.bind(this);
     }
 
-
     retrieveSelected() {
         let site, retrieve = [], tagged;
         for (site in search.bySite) {
@@ -197,6 +196,15 @@ class SearchResultRetriever {
     }
 }
 
+class RecipeDocumentService {
+    getWords() {
+
+    }
+}
+
+class RecipeDocumentWord {
+
+}
 
 export const search = {
     bySite: {
