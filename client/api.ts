@@ -15,6 +15,12 @@ const endpoints = {
             foodCom: "/search/by_site/food_com/"
         },
         retrieve: "/search/retrieve"
+    },
+    crud: {
+        recipeDocument: {
+            get: (documentId: number) => "/crud/recipe_document/" + documentId + "/",
+            getWords: (documentId: number) => "/crud/recipe_document/" + documentId + "/words/"
+        }
     }
 };
 
@@ -25,16 +31,23 @@ const actions = {
                 update: 'FOOD.COM_UPDATE_RESULTS',
                 toggleRetrieval: 'FOOD.COM_MARK_FOR_RETRIEVAL',
                 retrieveAll: 'FOOD.COM_MARK_ALL_FOR_RETRIEVAL',
-                retrieveNone: 'FOOD.COM_CLEAR_RETRIEVAL'
+                retrieveNone: 'FOOD.COM_MARK_NONE_FOR_RETRIEVAL'
 
             },
             foodNetwork: {
                 update: 'FOOD_NETWORK_UPDATE_RESULTS',
                 toggleRetrieval: 'FOOD_NETWORK_MARK_FOR_RETRIEVAL',
-                retrieveAll: 'FOOD_NETWORK_MARK_ALL_FOR_RETRIEVAL'
+                retrieveAll: 'FOOD_NETWORK_MARK_ALL_FOR_RETRIEVAL',
+                retrieveNone: 'FOOD_NETWORK_MARK_NONE_FOR_RETRIEVAL'
             }
         },
         retrieve: 'RETRIEVE_SEARCH_RESULTS_DOCUMENTS'
+    },
+    crud: {
+        recipeDocument: {
+            get: 'GET_RECIPE_DOCUMENT',
+            getWords: 'GET_RECIPE_DOCUMENT_WORDS'
+        }
     }
 
 };
@@ -43,18 +56,18 @@ function getInitialState() {
     return Immutable.fromJS({
         search: {
             bySite: {
-                food_com: {results: [], retrieve: {}, next_page: 1},
-                food_network: {results: [], retrieve: {}, next_page: 1}
+                foodCom: {results: [], retrieve: {}, next_page: 1},
+                foodNetwork: {results: [], retrieve: {}, next_page: 1}
             },
             retrieve: []
         },
-
+        documents: {}
     })
 }
 
 const reducers = {
     search: function (state: Immutable.Map<string, any>, action) {
-        var results;
+        var results, urlTuples, retrieve;
         if (!state) {
             state = getInitialState();
         }
@@ -62,35 +75,51 @@ const reducers = {
             case actions.search.bySite.foodCom.update:
                 results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
                 if (action.nextPage > 1) {
-                    let oldResults = state.getIn(["search", "bySite", "food_com", "results"]),
-                        oldResultsIds = Immutable.Set(oldResults.map(result => result.id)),
-                        newResultsOnly = results.filter(result => oldResultsIds.find(result.id));
+                    let oldResults = state.getIn(["search", "bySite", "foodCom", "results"]),
+                        oldResultsIds = Immutable.Set(oldResults.map(result => result.url)),
+                        newResultsOnly = results.filter(result => !oldResultsIds.contains(result.url));
                     results = oldResults.concat(newResultsOnly);
                 }
                 return state
-                    .mergeIn(["search", "bySite", "food_com", "results"], results)
-                    .updateIn(["search", "bySite", "food_com", "next_page"], () => action.nextPage);
+                    .mergeIn(["search", "bySite", "foodCom", "results"], results)
+                    .setIn(["search", "bySite", "foodCom", "next_page"], action.nextPage);
             case actions.search.bySite.foodCom.toggleRetrieval:
                 return state
-                    .updateIn(["search", "bySite", "food_com", "retrieve", action.recipe.url], val => !val);
+                    .updateIn(["search", "bySite", "foodCom", "retrieve", action.recipe.url], val => !val);
+            case actions.search.bySite.foodCom.retrieveAll:
+                urlTuples = state.getIn(["search", "bySite", "foodCom", "results"]).map(result => [result.url, true]);
+                retrieve = Immutable.Map(urlTuples);
+                return state.setIn(["search", "bySite", "foodCom", "retrieve"], retrieve);
+            case actions.search.bySite.foodCom.retrieveNone:
+                return state.setIn(["search", "bySite", "foodCom", "retrieve"], Immutable.Map());
             case actions.search.bySite.foodNetwork.update:
                 results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
                 if (action.nextPage > 1) {
-                    let oldResults = state.getIn(["search", "bySite", "food_network", "results"]),
-                        oldResultsIds = Immutable.Set(oldResults.map(result => result.id)),
-                        newResultsOnly = results.filter(result => oldResultsIds.find(result.id));
+                    let oldResults = state.getIn(["search", "bySite", "foodNetwork", "results"]),
+                        oldResultsIds = Immutable.Set(oldResults.map(result => result.url)),
+                        newResultsOnly = results.filter(result => !oldResultsIds.contains(result.url));
                     results = oldResults.concat(newResultsOnly);
                 }
                 return state
-                    .mergeIn(["search", "bySite", "food_network", "results"], results)
-                    .updateIn(["search", "bySite", "food_network", "next_page"], () => action.nextPage);
+                    .mergeIn(["search", "bySite", "foodNetwork", "results"], results)
+                    .setIn(["search", "bySite", "foodNetwork", "next_page"], action.nextPage);
             case actions.search.bySite.foodNetwork.toggleRetrieval:
                 return state
-                    .updateIn(["search", "bySite", "food_network", "retrieve", action.recipe.url], val => !val);
+                    .updateIn(["search", "bySite", "foodNetwork", "retrieve", action.recipe.url], val => !val);
+            case actions.search.bySite.foodNetwork.retrieveAll:
+                urlTuples = state.getIn(["search", "bySite", "foodNetwork", "results"]).map(result => [result.url, true]);
+                retrieve = Immutable.Map(urlTuples);
+                return state.setIn(["search", "bySite", "foodNetwork", "retrieve"], retrieve);
+            case actions.search.bySite.foodNetwork.retrieveNone:
+                return state.setIn(["search", "bySite", "foodNetwork", "retrieve"], Immutable.Map());
             case actions.search.retrieve:
                 results = state.getIn(["search", "retrieve"]).concat(action.recipe_documents);
                 return state
-                    .mergeIn(["search", "retrieve"], results)
+                    .mergeIn(["search", "retrieve"], results);
+            case actions.crud.recipeDocument.getWords:
+                return state
+                    .mergeIn(["crud", "documents", action.documentId], {})
+                    .setIn(["crud", "documents", action.documentId, "words"], action.words);
         }
         return state;
     },
@@ -109,10 +138,12 @@ interface searchActions {
 export class RecipeSearch {
     constructor(private endpoint: string, private actions: searchActions, private getState: Function) {
         this.loadNextSearchPage = this.loadNextSearchPage.bind(this);
+        this.retrieveAll = this.retrieveAll.bind(this);
+        this.retrieveNone = this.retrieveNone.bind(this);
     };
 
     search(searchTerm: string, page: number = 1): JQueryPromise<any> {
-        return jQuery.getJSON(this.endpoint, {search: searchTerm, page: page}).then((data) => {
+        return jQuery.getJSON(this.endpoint, {search: searchTerm, page: page}).then(data => {
             store.dispatch({type: this.actions.update, results: data.results, nextPage: data.next_page});
         });
     }
@@ -146,21 +177,25 @@ export class RecipeSearch {
     }
 
     retrieveAll() {
-        store.dispatch({type: this.actions.retrieveAll})
+        store.dispatch({type: this.actions.retrieveAll});
+    }
+
+    retrieveNone() {
+        store.dispatch({type: this.actions.retrieveNone});
     }
 }
 
 const FoodNetworkRecipeSearch = new RecipeSearch(
     endpoints.search.bySite.foodNetwork,
     actions.search.bySite.foodNetwork,
-    () => store.getState().search.get("search").get("bySite").get("food_network")
+    () => store.getState().search.get("search").get("bySite").get("foodNetwork")
 );
 
 
 const FoodComRecipeSearch = new RecipeSearch(
     endpoints.search.bySite.foodCom,
     actions.search.bySite.foodCom,
-    () => store.getState().search.get("search").get("bySite").get("food_com")
+    () => store.getState().search.get("search").get("bySite").get("foodCom")
 );
 
 export class RecipeSearchResult {
@@ -211,13 +246,24 @@ class SearchResultRetriever {
 }
 
 class RecipeDocumentService {
-    getWords() {
 
+    getDocument(documentId: number) {
+        jQuery.getJSON(endpoints.crud.recipeDocument.get(documentId)).then(data => {
+
+        });
+    }
+
+    getWords(documentId: number) {
+        jQuery.getJSON(endpoints.crud.recipeDocument.getWords(documentId)).then(data => {
+            store.dispatch({type: actions.crud.recipeDocument.getWords, documentId: documentId, words: data.words});
+        });
     }
 }
 
-class RecipeDocumentWord {
+export class RecipeDocumentWord {
+    constructor(public word, public tag, public id) {
 
+    }
 }
 
 export const search = {

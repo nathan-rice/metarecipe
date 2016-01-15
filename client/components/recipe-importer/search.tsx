@@ -2,7 +2,6 @@
 /// <reference path="../../definitions/react/react-global.d.ts" />
 ///  <reference path="../../definitions/react-redux/react-redux.d.ts" />
 /// <reference path="../../definitions/redux-form/redux-form.d.ts" />
-/// <reference path="../../definitions/immutable/immutable.d.ts" />
 
 import api = require('api');
 import React = require('react');
@@ -85,7 +84,14 @@ export class SearchResults extends React.Component<any, any> {
                         {results}
                     </tbody>
                 </table>
-                <button onClick={this.props.search.loadNextSearchPage}>Get more results</button>
+                <div className="pull-left">
+                    <button className="btn btn-default btn-sm" onClick={this.props.search.loadNextSearchPage}>Get more results</button>
+                    </div>
+                <div className="pull-right">
+                    <button className="btn btn-default btn-sm" onClick={this.props.search.retrieveAll}>Select all</button>
+                                <button className="btn btn-default btn-sm" onClick={this.props.search.retrieveNone}>Deselect all</button>
+                    </div>
+                <div className="clearfix"></div>
             </div>
         )
     }
