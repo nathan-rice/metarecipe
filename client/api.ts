@@ -23,12 +23,15 @@ const actions = {
         bySite: {
             foodCom: {
                 update: 'FOOD.COM_UPDATE_RESULTS',
-                toggleRetrieval: 'FOOD.COM_MARK_FOR_RETRIEVAL'
+                toggleRetrieval: 'FOOD.COM_MARK_FOR_RETRIEVAL',
+                retrieveAll: 'FOOD.COM_MARK_ALL_FOR_RETRIEVAL',
+                retrieveNone: 'FOOD.COM_CLEAR_RETRIEVAL'
 
             },
             foodNetwork: {
                 update: 'FOOD_NETWORK_UPDATE_RESULTS',
-                toggleRetrieval: 'FOOD_NETWORK_MARK_FOR_RETRIEVAL'
+                toggleRetrieval: 'FOOD_NETWORK_MARK_FOR_RETRIEVAL',
+                retrieveAll: 'FOOD_NETWORK_MARK_ALL_FOR_RETRIEVAL'
             }
         },
         retrieve: 'RETRIEVE_SEARCH_RESULTS_DOCUMENTS'
@@ -59,25 +62,31 @@ const reducers = {
             case actions.search.bySite.foodCom.update:
                 results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
                 if (action.nextPage > 1) {
-                    results = state.getIn(["search", "bySite", "food_com", "results"]).concat(results);
+                    let oldResults = state.getIn(["search", "bySite", "food_com", "results"]),
+                        oldResultsIds = Immutable.Set(oldResults.map(result => result.id)),
+                        newResultsOnly = results.filter(result => oldResultsIds.find(result.id));
+                    results = oldResults.concat(newResultsOnly);
                 }
                 return state
                     .mergeIn(["search", "bySite", "food_com", "results"], results)
                     .updateIn(["search", "bySite", "food_com", "next_page"], () => action.nextPage);
             case actions.search.bySite.foodCom.toggleRetrieval:
                 return state
-                    .updateIn(["search", "bySite", "food_com", "retrieve", action.recipe.url], (val) => !val);
+                    .updateIn(["search", "bySite", "food_com", "retrieve", action.recipe.url], val => !val);
             case actions.search.bySite.foodNetwork.update:
                 results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
                 if (action.nextPage > 1) {
-                    results = state.getIn(["search", "bySite", "food_network", "results"]).concat(results);
+                    let oldResults = state.getIn(["search", "bySite", "food_network", "results"]),
+                        oldResultsIds = Immutable.Set(oldResults.map(result => result.id)),
+                        newResultsOnly = results.filter(result => oldResultsIds.find(result.id));
+                    results = oldResults.concat(newResultsOnly);
                 }
                 return state
                     .mergeIn(["search", "bySite", "food_network", "results"], results)
                     .updateIn(["search", "bySite", "food_network", "next_page"], () => action.nextPage);
             case actions.search.bySite.foodNetwork.toggleRetrieval:
                 return state
-                    .updateIn(["search", "bySite", "food_network", "retrieve", action.recipe.url], (val) => !val);
+                    .updateIn(["search", "bySite", "food_network", "retrieve", action.recipe.url], val => !val);
             case actions.search.retrieve:
                 results = state.getIn(["search", "retrieve"]).concat(action.recipe_documents);
                 return state
@@ -135,6 +144,10 @@ export class RecipeSearch {
     taggedForRetrieval(): RecipeSearchResult[] {
         return this.getState().get("results").filter(r => this.getState().get("retrieve").get(r.url));
     }
+
+    retrieveAll() {
+        store.dispatch({type: this.actions.retrieveAll})
+    }
 }
 
 const FoodNetworkRecipeSearch = new RecipeSearch(
@@ -168,6 +181,7 @@ export class RecipeSearchResult {
     }
 
     constructor(public title, public author, public url, public id) {
+
     }
 }
 
