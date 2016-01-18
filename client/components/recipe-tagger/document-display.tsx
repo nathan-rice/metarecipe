@@ -6,13 +6,14 @@ import react = require('react');
 
 
 interface IDocumentTagDisplayProperties {
-
+    document: api.IRecipeDocument;
 }
 
-class DocumentTagDisplay extends React.Component<any, any> {
+class DocumentTagDisplay extends React.Component<IDocumentTagDisplayProperties, any> {
     render() {
+        let allWords = this.props.document.words.map(word => <DocumentWord word={word}/>);
         return (
-            <div></div>
+            <div>{allWords}</div>
         )
     }
 }
@@ -24,7 +25,7 @@ interface IDocumentWordProperties {
 class DocumentWord extends React.Component<any, any> {
     render() {
         return (
-            <span>{}</span>
+            <span>{word.original_format}</span>
         )
     }
 }

@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 
 from . import search
 from . import models
-from . import importer
+from . import extractors
 
 recipe_search = Blueprint('recipe_search', __name__)
 
@@ -37,10 +37,16 @@ def retrieve():
     in_targeted_urls = url_column.in_(targeted_urls)
     select = models.db.select([url_column]).where(in_targeted_urls)
     present_urls = set(e[0] for e in models.db.engine.execute(select).fetchall())
-    recipe_documents = [importer.HTMLImporter.from_url(url) for url in targeted_urls if url not in present_urls]
+    recipe_documents = [extractors.HTMLExtractor.from_url(url) for url in targeted_urls if url not in present_urls]
     models.db.session.add_all(recipe_documents)
     models.db.session.commit()
     return jsonify(recipe_documents=[document.as_dict for document in recipe_documents])
+
+
+@crud.route('/recipe_document/<int:document_id>/')
+def get_recipe_document(document_id):
+    document = models.RecipeDocument.query.filter(models.RecipeDocument.recipe_document_id == document_id).first()
+    return jsonify(document=document.as_dict)
 
 
 @crud.route('/recipe_document/<int:document_id>/words/')

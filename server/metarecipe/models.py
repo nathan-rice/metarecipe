@@ -2,7 +2,7 @@ import datetime
 
 import re
 import lxml.html
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from itertools import count
 from flask_sqlalchemy import SQLAlchemy
 
@@ -21,7 +21,11 @@ class RecipeDocument(db.Model):
     recipe_id = db.Column(db.Integer, db.ForeignKey("recipe.recipe_id"))
     recipe = db.relationship("Recipe")
 
-    _word_re = re.compile(r"(\d+\s*\d?[/⁄]?\d?|[-'\w]+|[:°.])")
+    _all_word_re = re.compile(r"(\d+\s*\d?[/⁄]?\d?|[-'\w]+|.*[:°.].*)")
+    _number_re = re.compile(r"(\d+\s*\d?[/⁄]?\d?)")
+    _symbol_re = re.compile(r"(.*[:°.].*)")
+
+    _FormattedWord = namedtuple("FormattedWord", ["word", "original_formatting"])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -30,25 +34,46 @@ class RecipeDocument(db.Model):
         self.words = self.get_document_words(self.html)
 
     @classmethod
+    def _transform_word(cls, word_):
+        # Numbers are extracted and replaced with a hash to improve model performance
+        if cls._number_re.match(word_):
+            return cls._FormattedWord("#", word_)
+        # The space around symbols is retained to improve document rendering
+        elif cls._symbol_re.match(word_):
+            return cls._FormattedWord(word_.strip(), word_)
+        else:
+            return cls._FormattedWord(word_.strip(), None)
+
+    @classmethod
+    def _extract_words(cls, text):
+        return [word_ for word_ in cls._all_word_re.findall(text or '')]
+
+    @classmethod
     def get_document_words(cls, html):
-
-        def extract_words(text):
-            return [word_.strip() for word_ in cls._word_re.findall(text or '')]
-
         results = []
         document = lxml.html.fromstring(html)
         elements = document.iter()
         document_position = count()
         element_position = defaultdict(lambda: count())
         for element in elements:
-            text_words = extract_words(element.text)
-            tail_words = extract_words(element.tail)
-            for (doc_pos, el_pos, word) in zip(document_position, element_position[element], text_words):
-                results.append(RecipeDocumentWord(word=word, document_position=doc_pos, element_position=el_pos,
-                                                  element_tag=element.tag))
-            for (doc_pos, el_pos, word) in zip(document_position, element_position[element.getparent()], tail_words):
-                results.append(RecipeDocumentWord(word=word, document_position=doc_pos, element_position=el_pos,
-                                                  element_tag=element.getparent().tag))
+            text_words = [cls._transform_word(word) for word in cls._extract_words(element.text)]
+            tail_words = [cls._transform_word(word) for word in cls._extract_words(element.tail)]
+            for (doc_pos, el_pos, transformed) in zip(document_position, element_position[element], text_words):
+                new_document = RecipeDocumentWord(
+                    word=transformed.word,
+                    document_position=doc_pos,
+                    element_position=el_pos,
+                    element_tag=element.tag,
+                    original_format=transformed.original_formatting)
+                results.append(new_document)
+            for (doc_pos, el_pos, transformed) in zip(document_position, element_position[element.getparent()], tail_words):
+                new_document = RecipeDocumentWord(
+                    word=transformed.word,
+                    document_position=doc_pos,
+                    element_position=el_pos,
+                    element_tag=element.tag,
+                    original_format=transformed.original_formatting)
+                results.append(new_document)
         return results
 
     @property
@@ -57,8 +82,7 @@ class RecipeDocument(db.Model):
             "recipe_document_id": self.recipe_document_id,
             "title": self.title,
             "html": self.html,
-            "url": self.url,
-            "retrieval_timestamp": self.retrieval_timestamp
+            "url": self.url
         }
 
 
@@ -77,6 +101,7 @@ class RecipeDocumentWord(db.Model):
     document_position = db.Column(db.Integer)
     element_position = db.Column(db.Integer)
     element_tag = db.Column(db.Text)
+    original_format = db.Column(db.String)
 
     recipe_document_id = db.Column(db.Integer, db.ForeignKey(RecipeDocument.recipe_document_id))
     recipe_document = db.relationship(RecipeDocument, backref="words")
@@ -88,7 +113,8 @@ class RecipeDocumentWord(db.Model):
             "word": self.word,
             "document_position": self.document_position,
             "element_position": self.element_position,
-            "element_tag": self.element_tag
+            "element_tag": self.element_tag,
+            "original_format": self.original_format
         }
 
 

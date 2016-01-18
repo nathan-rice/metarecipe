@@ -116,6 +116,9 @@ const reducers = {
                 results = state.getIn(["search", "retrieve"]).concat(action.recipe_documents);
                 return state
                     .mergeIn(["search", "retrieve"], results);
+            case actions.crud.recipeDocument.get:
+                if (!action.document) return state;
+                return state.mergeIn(["crud", "documents", action.document.documentId], action.document);
             case actions.crud.recipeDocument.getWords:
                 return state
                     .mergeIn(["crud", "documents", action.documentId], {})
@@ -249,7 +252,7 @@ class RecipeDocumentService {
 
     getDocument(documentId: number) {
         jQuery.getJSON(endpoints.crud.recipeDocument.get(documentId)).then(data => {
-
+            store.dispatch({type: actions.crud.recipeDocument.get, document: data.document})
         });
     }
 
@@ -260,10 +263,21 @@ class RecipeDocumentService {
     }
 }
 
-export class RecipeDocumentWord {
-    constructor(public word, public tag, public id) {
+export interface IRecipeDocument {
+    recipe_document_id: number;
+    title: string;
+    html: string;
+    url: string;
+    words?: RecipeDocumentWord[];
+}
 
-    }
+export interface RecipeDocumentWord {
+    recipe_document_word_id: number;
+    word: string;
+    document_position: number;
+    element_position: number;
+    element_tag: string;
+    original_format?: string;
 }
 
 export const search = {

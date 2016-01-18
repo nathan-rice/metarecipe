@@ -5,11 +5,11 @@ from lxml.html.clean import Cleaner
 from . import models
 
 
-class ImporterException(Exception):
+class ExtractorException(Exception):
     pass
 
 
-class HTMLImporter(object):
+class HTMLExtractor(object):
 
     _multiple_whitespace_cleaner = re.compile(r"\s+")
     _title_extractor = re.compile(r"<title>(.*)</title>", re.IGNORECASE)
@@ -24,7 +24,7 @@ class HTMLImporter(object):
     def from_url(cls, url):
         response = requests.get(url)
         if not response.ok:
-            raise ImporterException(response)
+            raise ExtractorException(response)
         else:
             html = response.text
             title_search = cls._title_extractor.search(html)
