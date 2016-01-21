@@ -11,9 +11,10 @@ require.config({
     }
 });
 
-define(["require", "exports", 'react', 'react-dom', 'api', './components/recipe-tagger/document-display'],
-    function (require, exports, React, ReactDOM, api, documentDisplay) {
+define(["require", "exports", 'react', 'react-dom', 'react-redux', 'api', './components/recipe-tagger/document-display'],
+    function (require, exports, React, ReactDOM, ReactRedux, api, documentDisplay) {
     var el = document.getElementById("main"),
-        app = React.createElement(React.createElement(documentDisplay.documentRenderer, null));
+        documentList = React.createElement(documentDisplay.DocumentList, null),
+        app = React.createElement(ReactRedux.Provider, {store: api.store}, documentList);
     ReactDOM.render(app, el);
 });

@@ -5,77 +5,6 @@
 import Immutable = require('immutable');
 import jQuery = require('jquery');
 
-export class RecipeSearchManager {
-
-    static endpoints = {
-        site: {
-            foodNetwork: FoodNetworkRecipeSearch.endpoints,
-            foodCom: FoodComRecipeSearch.endpoints
-        },
-        retrieve: "/search/retrieve/"
-    };
-
-    static actions = {
-        site: {
-            foodNetwork: FoodNetworkRecipeSearch.actions,
-            foodCom: FoodComRecipeSearch.actions
-        },
-        retrieve: 'RETRIEVE_SEARCH_RESULTS_DOCUMENTS'
-    };
-
-    static defaultState = Immutable.fromJS({
-        site: {
-            foodNetwork: FoodNetworkRecipeSearch.defaultState,
-            foodCom: FoodComRecipeSearch.defaultState
-        },
-        retrieve: []
-    });
-
-    public site;
-
-    constructor(private getState: Function, public store: Redux.Store) {
-        this.retrieveSelected = this.retrieveSelected.bind(this);
-        this.site = {
-            foodNetwork: new FoodNetworkRecipeSearch(() => getState().getIn(["site", "foodNetwork"]), this.store),
-            foodCom: new FoodComRecipeSearch(() => getState().getIn(["site", "foodCom"]), this.store)
-        }
-    }
-
-    reduce(state: Immutable.Map<string, any>, action) {
-        var constructor = (this.constructor as typeof RecipeSearchManager),
-            actions = constructor.actions,
-            results;
-        if (!state) {
-            state = constructor.defaultState;
-        }
-        if (action.type == actions.retrieve) {
-            results = state.getIn(["search", "retrieve"]).concat(action.recipeDocuments);
-            state = state.merge("retrieve", results);
-        }
-        return state
-            .setIn(["site", "foodNetwork"], this.site.foodNetwork.reduce(state.getIn(["site", "foodNetwork"]), action))
-            .setIn(["site", "foodCom"], this.site.foodCom.reduce(state.getIn(["site", "foodCom"]), action));
-    }
-
-    retrieveSelected() {
-        var foodNetworkTagged = this.site.foodNetwork.taggedForRetrieval(),
-            foodComTagged = this.site.foodCom.taggedForRetrieval();
-        return this.retrieve(foodNetworkTagged.concat(foodComTagged));
-    }
-
-    retrieve(results: Immutable.List<RecipeSearchResult>) {
-        let constructor = (this.constructor as typeof RecipeSearchManager),
-            actions = constructor.actions,
-            endpoints = constructor.endpoints;
-        jQuery.ajax({
-            type: "POST",
-            url: endpoints.retrieve,
-            data: JSON.stringify(results.toJS()),
-            contentType: "application/json; charset=utf-8"
-        }).then(data => this.store.dispatch({type: actions.retrieve, recipeDocuments: data.recipe_documents}));
-    }
-}
-
 interface IRecipeSearchEndpoints {
     update: string;
 }
@@ -89,20 +18,22 @@ interface IRecipeSearchActions {
 
 class RecipeSearchReducer {
     static update(state, action) {
-        let results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
-        if (action.nextPage > 1) {
+        var results = Immutable.List(action.results.map(RecipeSearchResult.fromArray));
+        // If we are getting additional results, we need to keep previous results around
+        if (action.nextPage > 2) {
             let oldResults = state.get("results"),
                 oldResultsIds = Immutable.Set(oldResults.map(result => result.url)),
                 newResultsOnly = results.filter((result: RecipeSearchResult) => !oldResultsIds.contains(result.url));
             results = oldResults.concat(newResultsOnly);
         }
         return state
-            .merge("results", results)
+            .set("results", results)
+            .set("search", action.search)
             .set("nextPage", action.nextPage);
     }
 
     static toggleRetrieve(state, action) {
-        return state.update("retrieve", action.recipe.url, val => !val);
+        return state.updateIn(["retrieve", action.recipe.url], val => !val);
     }
 
     static retrieveAll(state, action) {
@@ -121,9 +52,10 @@ export class RecipeSearch {
     static endpoints: IRecipeSearchEndpoints;
     static actions: IRecipeSearchActions;
     static reducers = RecipeSearchReducer;
-    static defaultState = Immutable.fromJS({results: [], retrieve: {}, next_page: 1});
+    static defaultState = Immutable.fromJS({results: [], search: "", retrieve: {}, next_page: 1});
 
     constructor(private getState: Function, public store: Redux.Store) {
+        this.reduce = this.reduce.bind(this);
         this.loadNextSearchPage = this.loadNextSearchPage.bind(this);
         this.retrieveAll = this.retrieveAll.bind(this);
         this.retrieveNone = this.retrieveNone.bind(this);
@@ -171,7 +103,7 @@ export class RecipeSearch {
     }
 
     getNextPage(): number {
-        return this.getState().get("next_page");
+        return this.getState().get("nextPage");
     }
 
     getResults(): RecipeSearchResult[] {
@@ -179,7 +111,9 @@ export class RecipeSearch {
     }
 
     toggleRetrieval(recipe: RecipeSearchResult) {
-        this.store.dispatch({type: (this.constructor as typeof RecipeSearch).actions.toggleRetrieval, recipe: recipe})
+        var constructor = (this.constructor as typeof RecipeSearch),
+            actions = constructor.actions;
+        this.store.dispatch({type: actions.toggleRetrieval, recipe: recipe})
     }
 
     shouldRetrieve(recipe: RecipeSearchResult): boolean {
@@ -207,7 +141,7 @@ class FoodNetworkRecipeSearch extends RecipeSearch {
         retrieveNone: 'FOOD.COM_MARK_NONE_FOR_RETRIEVAL'
     };
 
-    static endpoints = {update: "/search/by_site/food_network/"}
+    static endpoints = {update: "/search/site/food_network/"}
 }
 
 class FoodComRecipeSearch extends RecipeSearch {
@@ -218,7 +152,7 @@ class FoodComRecipeSearch extends RecipeSearch {
         retrieveNone: 'FOOD_NETWORK_MARK_NONE_FOR_RETRIEVAL'
     };
 
-    static endpoints = {update: "/search/by_site/food_com/"}
+    static endpoints = {update: "/search/site/food_com/"}
 }
 
 export class RecipeSearchResult {
@@ -241,5 +175,82 @@ export class RecipeSearchResult {
 
     constructor(public title, public author, public url, public id) {
 
+    }
+}
+
+export class RecipeSearchManager {
+
+    RecipeSearch;
+    RecipeSearchResult;
+
+    static endpoints = {
+        site: {
+            foodNetwork: FoodNetworkRecipeSearch.endpoints,
+            foodCom: FoodComRecipeSearch.endpoints
+        },
+        retrieve: "/search/retrieve/"
+    };
+
+    static actions = {
+        site: {
+            foodNetwork: FoodNetworkRecipeSearch.actions,
+            foodCom: FoodComRecipeSearch.actions
+        },
+        retrieve: 'RETRIEVE_SEARCH_RESULTS_DOCUMENTS'
+    };
+
+    static defaultState = Immutable.fromJS({
+        site: {
+            foodNetwork: FoodNetworkRecipeSearch.defaultState,
+            foodCom: FoodComRecipeSearch.defaultState
+        },
+        retrieve: []
+    });
+
+    public site;
+
+    constructor(private getState: Function, public store: Redux.Store) {
+        this.retrieveSelected = this.retrieveSelected.bind(this);
+        this.reduce = this.reduce.bind(this);
+        this.site = {
+            foodNetwork: new FoodNetworkRecipeSearch(() => getState().getIn(["site", "foodNetwork"]), this.store),
+            foodCom: new FoodComRecipeSearch(() => getState().getIn(["site", "foodCom"]), this.store)
+        };
+        this.RecipeSearch = RecipeSearch;
+        this.RecipeSearchResult = RecipeSearchResult;
+    }
+
+    reduce(state: Immutable.Map<string, any>, action) {
+        var constructor = (this.constructor as typeof RecipeSearchManager),
+            actions = constructor.actions,
+            results;
+        if (!state) {
+            state = constructor.defaultState;
+        }
+        if (action.type == actions.retrieve) {
+            results = state.get("retrieve").concat(action.recipeDocuments);
+            state = state.merge("retrieve", results);
+        }
+        return state
+            .setIn(["site", "foodNetwork"], this.site.foodNetwork.reduce(state.getIn(["site", "foodNetwork"]), action))
+            .setIn(["site", "foodCom"], this.site.foodCom.reduce(state.getIn(["site", "foodCom"]), action));
+    }
+
+    retrieveSelected() {
+        var foodNetworkTagged = this.site.foodNetwork.taggedForRetrieval(),
+            foodComTagged = this.site.foodCom.taggedForRetrieval();
+        return this.retrieve(foodNetworkTagged.concat(foodComTagged));
+    }
+
+    retrieve(results: Immutable.List<RecipeSearchResult>) {
+        let constructor = (this.constructor as typeof RecipeSearchManager),
+            actions = constructor.actions,
+            endpoints = constructor.endpoints;
+        return jQuery.ajax({
+            type: "POST",
+            url: endpoints.retrieve,
+            data: JSON.stringify(results.toJS()),
+            contentType: "application/json; charset=utf-8"
+        }).then(data => this.store.dispatch({type: actions.retrieve, recipeDocuments: data.recipe_documents}));
     }
 }

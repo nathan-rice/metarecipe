@@ -12,8 +12,8 @@ require.config({
 });
 
 define(["require", "exports", 'react-dom', 'react-redux', 'api', './components/recipe-importer/search'],
-    function (require, exports, ReactDOM, reactRedux, api, search) {
+    function (require, exports, ReactDOM, ReactRedux, api, search) {
     var el = document.getElementById("main"),
-        app = React.createElement(reactRedux.Provider, {store: api.store}, React.createElement(search.SearchManager, null));
+        app = React.createElement(ReactRedux.Provider, {store: api.store}, React.createElement(search.SearchManager, null));
     ReactDOM.render(app, el);
 });

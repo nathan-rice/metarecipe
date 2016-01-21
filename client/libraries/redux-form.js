@@ -1599,7 +1599,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  start(field);
 	  var promise = fn();
 	  if (!_isPromise2['default'](promise)) {
-	    throw new Error('asyncValidate function passed to reduxForm must return a promise');
+	    throw new Error('asyncValidate function passed to ReduxForm must return a promise');
 	  }
 	  var handleErrors = function handleErrors(rejected) {
 	    return function (errors) {

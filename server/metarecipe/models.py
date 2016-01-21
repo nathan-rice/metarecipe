@@ -101,7 +101,7 @@ class RecipeDocumentWord(db.Model):
     document_position = db.Column(db.Integer)
     element_position = db.Column(db.Integer)
     element_tag = db.Column(db.Text)
-    original_format = db.Column(db.String)
+    original_format = db.Column(db.Text)
 
     recipe_document_id = db.Column(db.Integer, db.ForeignKey(RecipeDocument.recipe_document_id))
     recipe_document = db.relationship(RecipeDocument, backref="words")

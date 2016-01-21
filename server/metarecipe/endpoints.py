@@ -1,4 +1,3 @@
-import json
 from flask import Blueprint, request, jsonify
 
 from . import search
@@ -10,7 +9,7 @@ recipe_search = Blueprint('recipe_search', __name__)
 crud = Blueprint('crud', __name__)
 
 
-@recipe_search.route('/by_site/food_network/')
+@recipe_search.route('/site/food_network/')
 def food_network():
     search_term = request.args.get("search")
     starting_page = request.args.get("page", 1)
@@ -19,7 +18,7 @@ def food_network():
     return jsonify(results=results, next_page=fn_search.current_page)
 
 
-@recipe_search.route('/by_site/food_com/')
+@recipe_search.route('/site/food_com/')
 def food_com():
     search_term = request.args.get("search")
     starting_page = request.args.get("page", 1)
@@ -28,7 +27,7 @@ def food_com():
     return jsonify(results=results, next_page=fc_search.current_page)
 
 
-@recipe_search.route('/retrieve', methods=["POST"])
+@recipe_search.route('/retrieve/', methods=["POST"])
 def retrieve():
     targeted_results = request.get_json()
     targeted_urls = [r.get("url") for r in targeted_results]
@@ -41,6 +40,12 @@ def retrieve():
     models.db.session.add_all(recipe_documents)
     models.db.session.commit()
     return jsonify(recipe_documents=[document.as_dict for document in recipe_documents])
+
+
+@crud.route('/recipe_document/')
+def list_recipe_documents():
+    documents = models.RecipeDocument.query.all()
+    return jsonify(documents=[document.as_dict for document in documents])
 
 
 @crud.route('/recipe_document/<int:document_id>/')
