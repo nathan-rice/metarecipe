@@ -155,14 +155,21 @@ class FoodComRecipeSearch extends RecipeSearch {
     static endpoints = {update: "/search/site/food_com/"}
 }
 
-export class RecipeSearchResult {
+const SearchResultRecord = Immutable.Record({title:'', author: '', url: '', id: 0});
+
+export class RecipeSearchResult extends SearchResultRecord {
+
+    title: string;
+    author: string;
+    url: string;
+    id: number;
 
     static fromImmutableMap(immutableMap): RecipeSearchResult {
         let title = immutableMap.get(0),
             author = immutableMap.get(1),
             url = immutableMap.get(2),
             id = immutableMap.get(3);
-        return new RecipeSearchResult(title, author, url, id)
+        return new RecipeSearchResult({title: title, author: author, url: url, id: id})
     }
 
     static fromArray(array): RecipeSearchResult {
@@ -170,12 +177,9 @@ export class RecipeSearchResult {
             author = array[1],
             url = array[2],
             id = array[3];
-        return new RecipeSearchResult(title, author, url, id);
+        return new RecipeSearchResult({title: title, author: author, url: url, id: id});
     }
 
-    constructor(public title, public author, public url, public id) {
-
-    }
 }
 
 export class RecipeSearchManager {
@@ -229,7 +233,7 @@ export class RecipeSearchManager {
         }
         if (action.type == actions.retrieve) {
             results = state.get("retrieve").concat(action.recipeDocuments);
-            state = state.merge("retrieve", results);
+            state = state.set("retrieve", results);
         }
         return state
             .setIn(["site", "foodNetwork"], this.site.foodNetwork.reduce(state.getIn(["site", "foodNetwork"]), action))

@@ -9,11 +9,12 @@ import Search = require('search');
 import Crud = require('crud');
 
 export const
-    store: Redux.Store = Redux.createStore(state => state),
-    search: Search.RecipeSearchManager = new Search.RecipeSearchManager(() => store.getState().search, store),
-    crud: Crud.ObjectManager = new Crud.ObjectManager(() => store.getState().crud, store);
+    store = Redux.createStore(state => state),
+    search = new Search.RecipeSearchManager(() => store.getState().search, store),
+    crud = new Crud.ObjectManager(() => store.getState().crud, store);
 
-const reducers = {
+
+export const reducers = {
     form: ReduxForm.reducer,
     search: search.reduce,
     crud: crud.reduce

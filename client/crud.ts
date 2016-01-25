@@ -6,7 +6,9 @@ import Immutable = require('immutable');
 import jQuery = require('jquery');
 
 class ObjectReducer {
-    static list: (state: Immutable.Map<any, any>, action) => Immutable.Map<any, any> = (state, action) => state;
+    static list: (state: Immutable.Map<any, any>, action) => Immutable.Map<any, any> = (state, action) => {
+        return state;
+    }
     static create: (state: Immutable.Map<any, any>, action) => Immutable.Map<any, any> = (state, action) => state;
     static read: (state: Immutable.Map<any, any>, action) => Immutable.Map<any, any> = (state, action) => state;
     static update: (state: Immutable.Map<any, any>, action) => Immutable.Map<any, any> = (state, action) => state;
@@ -37,11 +39,11 @@ class ObjectService {
 
     static defaultState = Immutable.fromJS({});
 
-    private setBindings() {
+    protected setBindings() {
         this.reduce = this.reduce.bind(this);
     }
 
-    constructor(private getState: Function, public store: Redux.Store) {
+    constructor(protected getState: Function, public store: Redux.Store) {
         this.setBindings();
     }
 
@@ -52,15 +54,15 @@ class ObjectService {
             state = constructor.defaultState;
         }
         switch (action.type) {
-            case actions.list:
+            case actions.get("list"):
                 return constructor.reducers.list(state, action);
-            case actions.create:
+            case actions.get("create"):
                 return constructor.reducers.create(state, action);
-            case actions.read:
+            case actions.get("read"):
                 return constructor.reducers.read(state, action);
-            case actions.update:
+            case actions.get("update"):
                 return constructor.reducers.update(state, action);
-            case actions.delete:
+            case actions.get("delete"):
                 return constructor.reducers.read(state, action);
             default:
                 return state;
@@ -70,19 +72,70 @@ class ObjectService {
 
 class RecipeDocumentReducer extends ObjectReducer {
 
+    static setSelectedDocument(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        return state.set("selectedDocument", action.documentId);
+    }
+
     static list(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-        return state.mergeIn(["documents"], action.documents)
+        return state.mergeIn(["documents"],
+            action.documents
+                .map(RecipeDocument.fromObject)
+                .map(o => [o.recipe_document_id, o])
+        )
     }
 
     static read(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
         if (!action.document) return state;
-        return state.mergeIn(["documents", action.document.documentId], action.document);
+        return state.mergeIn(["documents", action.document.documentId], RecipeDocument.fromObject(action.document));
     }
 
     static words(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
         return state
             .mergeIn(["documents", action.documentId], {})
-            .setIn([action.documentId, "words"], action.words);
+            .setIn(["documents", action.documentId, "words"], Immutable.List(action.words).map(RecipeDocumentWord.fromObject));
+    }
+}
+
+const RecipeDocumentWordRecord = Immutable.Record({
+    recipe_document_word_id: 0,
+    word: '',
+    document_position: 0,
+    element_position: 0,
+    element_tag: 'p',
+    original_format: ''
+});
+
+export class RecipeDocumentWord extends RecipeDocumentWordRecord {
+    recipe_document_word_id: number;
+    word: string;
+    document_position: number;
+    element_position: number;
+    element_tag: string;
+    original_format: string;
+
+    static fromObject(o) {
+        return new RecipeDocumentWord({
+            recipe_document_word_id: o.recipe_document_word_id,
+            word: o.word,
+            document_position: o.document_position,
+            element_position: o.element_position,
+            element_tag: o.element_tag,
+            original_format: o.original_format
+        });
+    }
+}
+
+const RecipeDocumentRecord = Immutable.Record({recipe_document_id: 0, title: '', html: '', url: '', words: Immutable.List()});
+
+export class RecipeDocument extends RecipeDocumentRecord {
+    recipe_document_id: number;
+    title: string;
+    html: string;
+    url: string;
+    words: Immutable.List<RecipeDocumentWord>;
+
+    static fromObject(o) {
+        return new RecipeDocument({recipe_document_id: o.recipe_document_id, title: o.title, html: o.html, url: o.url});
     }
 }
 
@@ -90,13 +143,14 @@ export class RecipeDocumentService extends ObjectService {
 
     static crudRoot = ObjectService.crudRoot + "recipe_document/";
 
-    static actions = ObjectService.actions.merge({
+    static actions:Immutable.Map<string, any> = ObjectService.actions.merge({
         list: 'LIST_RECIPE_DOCUMENTS',
         read: 'READ_RECIPE_DOCUMENT',
-        words: 'GET_RECIPE_DOCUMENT_WORDS'
+        words: 'GET_RECIPE_DOCUMENT_WORDS',
+        setSelectedDocument: 'SET_SELECTED_RECIPE_DOCUMENT'
     });
 
-    static endpoints = ObjectService.endpoints.merge({
+    static endpoints: Immutable.Map<string, string & Function> = ObjectService.endpoints.merge({
         list: RecipeDocumentService.crudRoot,
         read: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/",
         words: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/words/"
@@ -104,18 +158,44 @@ export class RecipeDocumentService extends ObjectService {
 
     static reducers = RecipeDocumentReducer;
 
-    static defaultState = Immutable.fromJS({
+    static defaultState:Immutable.Map<string, any> = Immutable.fromJS({
         documents: {},
         selectedDocument: 0
     });
+
+    getDocument(documentId: number): RecipeDocument {
+        return this.getState().getIn(["documents", documentId]);
+    }
+
+    getDocuments(): Immutable.List<RecipeDocument> {
+        var documentIterator = this.getState().get("documents").values();
+        return Immutable.List(documentIterator) as Immutable.List<RecipeDocument>;
+    }
+
+    getSelectedDocumentID(): number {
+        return this.getState().get("selectedDocument")
+    }
+
+    getSelectedDocument(): RecipeDocument {
+        var state = this.getState(), documentId = state.get("selectedDocument");
+        return state.getIn(["documents", documentId]);
+    }
+
+    setSelectedDocument(documentId: number) {
+        var constructor = (this.constructor as typeof RecipeDocumentService),
+            actions = constructor.actions;
+        this.store.dispatch({type: actions.get("setSelectedDocument"), documentId: documentId});
+    }
 
     reduce(state: Immutable.Map<string, any>, action): Immutable.Map<any, any> {
         var constructor = (this.constructor as typeof RecipeDocumentService),
             actions = constructor.actions,
             reducers = constructor.reducers;
         switch (action.type) {
-            case actions.words:
+            case actions.get("words"):
                 return reducers.words(state, action);
+            case actions.get("setSelectedDocument"):
+                return reducers.setSelectedDocument(state, action);
             default:
                 return super.reduce(state, action);
         }
@@ -125,8 +205,8 @@ export class RecipeDocumentService extends ObjectService {
         var constructor = (this.constructor as typeof RecipeDocumentService),
             endpoints = constructor.endpoints,
             actions = constructor.actions;
-        return jQuery.getJSON(endpoints.list).then(data => {
-            this.store.dispatch({type: actions.list, documents: data.documents})
+        return jQuery.getJSON(endpoints.get("list")).then(data => {
+            this.store.dispatch({type: actions.get("list"), documents: data.documents})
         });
     }
 
@@ -134,8 +214,8 @@ export class RecipeDocumentService extends ObjectService {
         var constructor = (this.constructor as typeof RecipeDocumentService),
             endpoints = constructor.endpoints,
             actions = constructor.actions;
-        return jQuery.getJSON(endpoints.read(documentId)).then(data => {
-            this.store.dispatch({type: actions.read, document: data.document})
+        return jQuery.getJSON(endpoints.get("read")(documentId)).then(data => {
+            this.store.dispatch({type: actions.get("read"), document: data.document})
         });
     }
 
@@ -143,28 +223,12 @@ export class RecipeDocumentService extends ObjectService {
         var constructor = (this.constructor as typeof RecipeDocumentService),
             endpoints = constructor.endpoints,
             actions = constructor.actions;
-        return jQuery.getJSON(endpoints.words(documentId)).then(data => {
-            this.store.dispatch({type: actions.words, documentId: documentId, words: data.words});
+        return jQuery.getJSON(endpoints.get("words")(documentId)).then(data => {
+            this.store.dispatch({type: actions.get("words"), documentId: documentId, words: data.words});
         });
     }
 }
 
-interface IRecipeDocument {
-    recipe_document_id: number;
-    title: string;
-    html: string;
-    url: string;
-    words?: RecipeDocumentWord[];
-}
-
-interface RecipeDocumentWord {
-    recipe_document_word_id: number;
-    word: string;
-    document_position: number;
-    element_position: number;
-    element_tag: string;
-    original_format?: string;
-}
 
 export class ObjectManager {
 
@@ -192,14 +256,14 @@ export class ObjectManager {
             state = constructor.defaultState;
         }
         return state
-            .set("recipeDocument", this.recipeDocument.reduce(state, action));
+            .set("recipeDocument", this.recipeDocument.reduce(state.get("recipeDocument"), action));
     }
 
-    private setBindings() {
+    protected setBindings() {
         this.reduce = this.reduce.bind(this);
     }
 
-    constructor(private getState: Function, public store: Redux.Store) {
+    constructor(protected getState: Function, public store: Redux.Store) {
         this.setBindings();
         this.recipeDocument = new RecipeDocumentService(() => getState().get("recipeDocument"), store);
     }

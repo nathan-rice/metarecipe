@@ -21,9 +21,9 @@ class RecipeDocument(db.Model):
     recipe_id = db.Column(db.Integer, db.ForeignKey("recipe.recipe_id"))
     recipe = db.relationship("Recipe")
 
-    _all_word_re = re.compile(r"(\d+\s*\d?[/⁄]?\d?|[-'\w]+|.*[:°.].*)")
-    _number_re = re.compile(r"(\d+\s*\d?[/⁄]?\d?)")
-    _symbol_re = re.compile(r"(.*[:°.].*)")
+    _all_word_re = re.compile(r"(\d+\.\d+|\d+\s*\d?\s*[/⁄]\s*\d+|\d+|[-'a-zA-Z]+|\s*[:°.()&]\s*)")
+    _number_re = re.compile(r"(\d+\.\d+|\d+\s*\d?\s*[/⁄]\s*\d+|\d+)")
+    _symbol_re = re.compile(r"(\s*[:°.()]\s*)")
 
     _FormattedWord = namedtuple("FormattedWord", ["word", "original_formatting"])
 
@@ -71,7 +71,7 @@ class RecipeDocument(db.Model):
                     word=transformed.word,
                     document_position=doc_pos,
                     element_position=el_pos,
-                    element_tag=element.tag,
+                    element_tag=element.getparent().tag,
                     original_format=transformed.original_formatting)
                 results.append(new_document)
         return results
