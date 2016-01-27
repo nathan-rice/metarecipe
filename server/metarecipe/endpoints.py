@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, abort
 
 from . import search
 from . import models
@@ -61,4 +61,29 @@ def get_recipe_document_words(document_id):
         .order_by(models.RecipeDocumentWord.document_position)\
         .all()
     return jsonify(words=[word.as_dict for word in words])
+
+
+@crud.route('/recipe_document/<int:document_id>/tags/')
+def get_recipe_document_word_tags(document_id):
+    tags = models.RecipeDocumentWordTag.query\
+        .join(models.RecipeDocumentTagSet)\
+        .filter(models.RecipeDocumentTagSet.recipe_document_id == document_id)\
+        .all()
+    return jsonify(tags=[tag.as_dict for tag in tags])
+
+
+@crud.route('/recipe_document/<int:document_id>/tags/', methods=["POST"])
+def create_recipe_document_word_tag(document_id):
+    pass
+
+
+@crud.route('/recipe_document/<int:document_id>/tags/<int:tag_id>/', methods=["DELETE"])
+def delete_recipe_document_word_tag(document_id, tag_id):
+    deleted = models.RecipeDocumentWordTag.query\
+        .filter(models.RecipeDocumentWordTag.recipe_document_word_tag_id == tag_id)\
+        .delete()
+    if not deleted:
+        return abort(404)
+    else:
+        return jsonify(recipe_document_word_tag_id=tag_id)
 

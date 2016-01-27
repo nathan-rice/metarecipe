@@ -119,7 +119,7 @@ class RecipeDocumentWord(db.Model):
 
 
 class RecipeDocumentWordTag(db.Model):
-    __tabname__ = "recipe_document_word_tag"
+    __tablename__ = "recipe_document_word_tag"
     recipe_document_word_tag_id = db.Column(db.Integer, primary_key=True)
     tag = db.Column(db.Unicode)
 
@@ -128,6 +128,14 @@ class RecipeDocumentWordTag(db.Model):
 
     recipe_document_tag_set_id = db.Column(db.Integer, db.ForeignKey(RecipeDocumentTagSet.recipe_document_tagset_id))
     tag_set = db.relationship(RecipeDocumentTagSet, backref="tags")
+
+    @property
+    def as_dict(self):
+        return {
+            "recipe_document_word_tag_id": self.recipe_document_word_tag_id,
+            "recipe_document_word_id": self.recipe_document_word_id,
+            "tag": self.tag
+        }
 
 
 class Recipe(db.Model):

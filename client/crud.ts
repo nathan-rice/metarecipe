@@ -1,14 +1,16 @@
 /// <reference path="definitions/jquery/jquery.d.ts" />
 /// <reference path="definitions/immutable/immutable.d.ts" />
 /// <reference path="definitions/redux/redux.d.ts" />
+/// <reference path="definitions/rangy/rangy.d.ts" />
+
 
 import Immutable = require('immutable');
 import jQuery = require('jquery');
+import rangy = require('rangy');
+
 
 class ObjectReducer {
-    static list: (state: Immutable.Map<any, any>, action) => Immutable.Map<any, any> = (state, action) => {
-        return state;
-    }
+    static list: (state: Immutable.Map<any, any>, action) => Immutable.Map<any, any> = (state, action) => state;
     static create: (state: Immutable.Map<any, any>, action) => Immutable.Map<any, any> = (state, action) => state;
     static read: (state: Immutable.Map<any, any>, action) => Immutable.Map<any, any> = (state, action) => state;
     static update: (state: Immutable.Map<any, any>, action) => Immutable.Map<any, any> = (state, action) => state;
@@ -70,32 +72,6 @@ class ObjectService {
     }
 }
 
-class RecipeDocumentReducer extends ObjectReducer {
-
-    static setSelectedDocument(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-        return state.set("selectedDocumentID", action.documentId);
-    }
-
-    static list(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-        return state.mergeIn(["documents"],
-            action.documents
-                .map(RecipeDocument.fromObject)
-                .map(o => [o.recipe_document_id, o])
-        )
-    }
-
-    static read(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-        if (!action.document) return state;
-        return state.mergeIn(["documents", action.document.documentId], RecipeDocument.fromObject(action.document));
-    }
-
-    static words(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-        return state
-            .mergeIn(["documents", action.documentId], {})
-            .setIn(["documents", action.documentId, "words"], Immutable.List(action.words).map(RecipeDocumentWord.fromObject));
-    }
-}
-
 const RecipeDocumentWordRecord = Immutable.Record({
     recipe_document_word_id: 0,
     word: '',
@@ -125,7 +101,34 @@ export class RecipeDocumentWord extends RecipeDocumentWordRecord {
     }
 }
 
-const RecipeDocumentRecord = Immutable.Record({recipe_document_id: 0, title: '', html: '', url: '', words: Immutable.List()});
+const RecipeDocumentWordTagRecord = Immutable.Record({
+    recipe_document_word_tag_id: 0,
+    recipe_document_word_id: 0,
+    tag: ''
+});
+
+export class RecipeDocumentWordTag extends RecipeDocumentWordTagRecord {
+    recipe_document_word_tag_id: number;
+    recipe_document_word_id: number;
+    tag: string;
+
+    static fromObject(o) {
+        return new RecipeDocumentWordTag({
+            recipe_document_word_tag_id: o.recipe_document_word_tag_id,
+            recipe_document_word_id: o.recipe_document_word_id,
+            tag: o.tag
+        })
+    }
+}
+
+const RecipeDocumentRecord = Immutable.Record({
+    recipe_document_id: 0,
+    title: '',
+    html: '',
+    url: '',
+    words: Immutable.List(),
+    tags: Immutable.List()
+});
 
 export class RecipeDocument extends RecipeDocumentRecord {
     recipe_document_id: number;
@@ -133,9 +136,61 @@ export class RecipeDocument extends RecipeDocumentRecord {
     html: string;
     url: string;
     words: Immutable.List<RecipeDocumentWord>;
+    tags: Immutable.List<RecipeDocumentWordTag>;
 
     static fromObject(o) {
-        return new RecipeDocument({recipe_document_id: o.recipe_document_id, title: o.title, html: o.html, url: o.url});
+        return new RecipeDocument({
+            recipe_document_id: o.recipe_document_id,
+            title: o.title,
+            html: o.html,
+            url: o.url
+        });
+    }
+}
+
+class RecipeDocumentReducer extends ObjectReducer {
+
+    static setSelectedDocument(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        return state.set("selectedDocumentID", action.documentId);
+    }
+
+    static list(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        return state.mergeIn(["documents"],
+            action.documents
+                .map(RecipeDocument.fromObject)
+                .map(o => [o.recipe_document_id, o])
+        );
+    }
+
+    static read(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        if (!action.document) return state;
+        return state.mergeIn(["documents", action.document.documentId], RecipeDocument.fromObject(action.document));
+    }
+
+    static words(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        return state
+            .mergeIn(["documents", action.documentId], {})
+            .setIn(["documents", action.documentId, "words"], Immutable.List(action.words).map(RecipeDocumentWord.fromObject));
+    }
+
+    static tags(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        return state
+            .mergeIn(["documents", action.documentId], {})
+            .setIn(["documents", action.documentId, "tags"], Immutable.List(action.tags).map(RecipeDocumentWordTag.fromObject));
+    }
+
+    static createTag(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        let tags = state.getIn(["documents", action.documentId, "tags"]);
+        return state
+            .mergeIn(["documents", action.documentId], {})
+            .setIn(["documents", action.documentId, "tags"], tags.push(RecipeDocumentWordTag.fromObject(action.tag)));
+    }
+
+    static deleteTag(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        let tags = state.getIn(["documents", action.documentId, "tags"]);
+        return state
+            .mergeIn(["documents", action.documentId], {})
+            .setIn(["documents", action.documentId, "tags"], tags.filter(tag => tag.recipe_document_tag_id != action.recipe_document_tag_id));
     }
 }
 
@@ -147,13 +202,19 @@ export class RecipeDocumentService extends ObjectService {
         list: 'LIST_RECIPE_DOCUMENTS',
         read: 'READ_RECIPE_DOCUMENT',
         words: 'GET_RECIPE_DOCUMENT_WORDS',
-        setSelectedDocumentID: 'SET_SELECTED_RECIPE_DOCUMENT'
+        tags: 'GET_RECIPE_DOCUMENT_TAGS',
+        setSelectedDocumentID: 'SET_SELECTED_RECIPE_DOCUMENT',
+        createTag: 'CREATE_RECIPE_DOCUMENT_TAG',
+        deleteTag: 'DELETE_RECIPE_DOCUMENT_TAG'
     });
 
     static endpoints: Immutable.Map<string, string & Function> = ObjectService.endpoints.merge({
         list: RecipeDocumentService.crudRoot,
         read: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/",
-        words: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/words/"
+        words: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/words/",
+        tags: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/",
+        createTag: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/",
+        deleteTag: (documentId: number, tagId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/" + tagId + "/",
     });
 
     static reducers = RecipeDocumentReducer;
@@ -227,8 +288,25 @@ export class RecipeDocumentService extends ObjectService {
             this.store.dispatch({type: actions.get("words"), documentId: documentId, words: data.words});
         });
     }
-}
 
+    tags(documentId: number) {
+        var constructor = (this.constructor as typeof RecipeDocumentService),
+            endpoints = constructor.endpoints,
+            actions = constructor.actions;
+        return jQuery.getJSON(endpoints.get("tags")(documentId)).then(data => {
+            this.store.dispatch({type: actions.get("tags"), documentId: documentId, words: data.tags});
+        });
+    }
+
+    createTag(documentId: number) {
+        var constructor = (this.constructor as typeof RecipeDocumentService),
+            endpoints = constructor.endpoints,
+            actions = constructor.actions;
+        return jQuery.post(endpoints.get("tags")(documentId)).then(data => {
+            this.store.dispatch({type: actions.get("tags"), documentId: documentId, words: data.tags});
+        });
+    }
+}
 
 export class ObjectManager {
 
