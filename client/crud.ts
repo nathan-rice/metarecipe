@@ -73,7 +73,7 @@ class ObjectService {
 class RecipeDocumentReducer extends ObjectReducer {
 
     static setSelectedDocument(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-        return state.set("selectedDocument", action.documentId);
+        return state.set("selectedDocumentID", action.documentId);
     }
 
     static list(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
@@ -147,7 +147,7 @@ export class RecipeDocumentService extends ObjectService {
         list: 'LIST_RECIPE_DOCUMENTS',
         read: 'READ_RECIPE_DOCUMENT',
         words: 'GET_RECIPE_DOCUMENT_WORDS',
-        setSelectedDocument: 'SET_SELECTED_RECIPE_DOCUMENT'
+        setSelectedDocumentID: 'SET_SELECTED_RECIPE_DOCUMENT'
     });
 
     static endpoints: Immutable.Map<string, string & Function> = ObjectService.endpoints.merge({
@@ -160,7 +160,7 @@ export class RecipeDocumentService extends ObjectService {
 
     static defaultState:Immutable.Map<string, any> = Immutable.fromJS({
         documents: {},
-        selectedDocument: 0
+        selectedDocumentID: 0
     });
 
     getDocument(documentId: number): RecipeDocument {
@@ -173,18 +173,18 @@ export class RecipeDocumentService extends ObjectService {
     }
 
     getSelectedDocumentID(): number {
-        return this.getState().get("selectedDocument")
+        return this.getState().get("selectedDocumentID")
     }
 
     getSelectedDocument(): RecipeDocument {
-        var state = this.getState(), documentId = state.get("selectedDocument");
+        var state = this.getState(), documentId = state.get("selectedDocumentID");
         return state.getIn(["documents", documentId]);
     }
 
-    setSelectedDocument(documentId: number) {
+    setSelectedDocumentID(documentId: number) {
         var constructor = (this.constructor as typeof RecipeDocumentService),
             actions = constructor.actions;
-        this.store.dispatch({type: actions.get("setSelectedDocument"), documentId: documentId});
+        this.store.dispatch({type: actions.get("setSelectedDocumentID"), documentId: documentId});
     }
 
     reduce(state: Immutable.Map<string, any>, action): Immutable.Map<any, any> {
@@ -194,7 +194,7 @@ export class RecipeDocumentService extends ObjectService {
         switch (action.type) {
             case actions.get("words"):
                 return reducers.words(state, action);
-            case actions.get("setSelectedDocument"):
+            case actions.get("setSelectedDocumentID"):
                 return reducers.setSelectedDocument(state, action);
             default:
                 return super.reduce(state, action);

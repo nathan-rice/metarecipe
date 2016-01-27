@@ -1,22 +1,24 @@
+/// <reference path="../../definitions/react-redux/react-redux.d.ts" />
+
 import React = require('react');
 import ReactDOM = require('react-dom');
+import ReactRedux = require('react-redux');
 import api = require('api');
 import DocumentDisplay = require('document-display')
 
 
-var app, el = document.getElementById("main");
-
-class DemoInterface extends React.Component<any, any> {
+class BaseDemoInterface extends React.Component<any, any> {
     render() {
-        var selectedDocument = api.crud.recipeDocument.getSelectedDocument(),
-            documents = api.crud.recipeDocument.getDocuments();
+        var documents = this.props.documents,
+            document = documents ? documents.get(this.props.documentID) : null,
+            html = document ? document.html : '';
         return (
             <div className="container">
                 <div className="row">
-                    <div className="col-sm-6" dangerouslySetInnerHTML={{__html: selectedDocument.html}}>
+                    <div className="col-sm-6" dangerouslySetInnerHTML={{__html: html}}>
                     </div>
                     <div className="col-sm-6">
-                        <DocumentDisplay.FormattedDocument selectedDocument={selectedDocument}/>
+                        <DocumentDisplay.FormattedDocument document={document}/>
                     </div>
                 </div>
                 <div className="row">
@@ -24,19 +26,16 @@ class DemoInterface extends React.Component<any, any> {
                         <DocumentDisplay.DocumentList documents={documents}/>
                     </div>
                 </div>
-
             </div>
         )
     }
 }
 
-var documents, firstDocument;
+function getDemoInterfaceProps(state) {
+    return {
+        documentID: state.crud.getIn(["recipeDocument", "selectedDocumentID"]),
+        documents: state.crud.getIn(["recipeDocument", "documents"])
+    }
+}
 
-api.crud.recipeDocument.list().then(_ => {
-    documents = api.crud.recipeDocument.getDocuments();
-    firstDocument = documents.first();
-    api.crud.recipeDocument.setSelectedDocument(firstDocument.recipe_document_id);
-    api.crud.recipeDocument.words(firstDocument.recipe_document_id).then(_ => {
-        ReactDOM.render(<DemoInterface/>, el);
-    });
-});
+export const DemoInterface = ReactRedux.connect(getDemoInterfaceProps)(BaseDemoInterface);

@@ -13,5 +13,11 @@ require.config({
 });
 
 define(["require", "exports", 'jquery', 'react', 'react-dom', 'react-redux', 'api', '/client/components/recipe-tagger/demo.js'],
-    function (require, exports, jQuery, React, ReactDOM, ReactRedux, api, demo) {}
+    function (require, exports, jQuery, React, ReactDOM, ReactRedux, api, demo) {
+        api.crud.recipeDocument.list();
+        var el = document.getElementById("main"),
+            demoInterface = React.createElement(demo.DemoInterface, null),
+            app = React.createElement(ReactRedux.Provider, {store: api.store}, demoInterface);
+        ReactDOM.render(app, el);
+    }
 );

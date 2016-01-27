@@ -1,12 +1,10 @@
 /// <reference path="../../definitions/react/react.d.ts" />
 /// <reference path="../../definitions/react/react-global.d.ts" />
-/// <reference path="../../definitions/react-redux/react-redux.d.ts" />
 /// <reference path="../../definitions/immutable/immutable.d.ts" />
 
 import api = require('api');
 import crud = require('crud');
 import React = require('react');
-import ReactRedux = require('react-redux');
 import Immutable = require('immutable');
 
 
@@ -16,7 +14,7 @@ interface IDocumentListProperties {
 
 export class DocumentList extends React.Component<IDocumentListProperties, any> {
     render() {
-        let documents = this.props.documents.map(document => <DocumentListEntry title={document.title}/>);
+        let documents = this.props.documents.map(document => <DocumentListEntry document={document}/>);
         return (
             <div>
                 <h3>Document List</h3>
@@ -30,9 +28,19 @@ export class DocumentList extends React.Component<IDocumentListProperties, any> 
 
 class DocumentListEntry extends React.Component<any, any> {
     render() {
-        return (
-            <li>{this.props.title}</li>
+        let document = this.props.document,
+            onClick = () => {
+                return api.crud.recipeDocument.setSelectedDocumentID(document.recipe_document_id);
+            };
+        if (api.crud.recipeDocument.getSelectedDocumentID() == document.recipe_document_id) {
+            return (
+            <li className="active">{document.title}</li>
         )
+        } else {
+            return (
+                <li><a href="#" onClick={onClick}>{document.title}</a></li>
+            )
+        }
     }
 }
 
@@ -41,7 +49,8 @@ export class FormattedDocument extends React.Component<any, any> {
     static firstTag(words: Immutable.List<crud.RecipeDocumentWord>): Immutable.List<crud.RecipeDocumentWord> {
         var word;
         if (!words || !(word = words.first())) {
-            return words;
+            // Returning undefined here stops execution of while loops based on .firstTag() output.
+            return undefined;
         }
         var tagPosition = word.element_position - 1,
             lastTag = word.element_tag,
@@ -128,9 +137,26 @@ export class FormattedDocument extends React.Component<any, any> {
         return currentMarkup;
     }
 
+    getWords() {
+        var document = this.props.document,
+            words = document ? document.words.size : null;
+        if (document && !words) {
+            api.crud.recipeDocument.words(document.recipe_document_id);
+        }
+    }
+
+    componentDidMount() {
+        this.getWords();
+    }
+
+    componentDidUpdate(oldState, oldProps) {
+        this.getWords();
+    }
+
     render() {
-        let words = this.props.selectedDocument.words;
-        return (<div>{FormattedDocument.tagWordsToMarkup(words)}</div>);
+        let document = this.props.document,
+            words = document ? FormattedDocument.tagWordsToMarkup(document.words) : '';
+        return (<div>{words}</div>);
     }
 }
 
