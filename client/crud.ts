@@ -192,6 +192,11 @@ class RecipeDocumentReducer extends ObjectReducer {
             .mergeIn(["documents", action.documentId], {})
             .setIn(["documents", action.documentId, "tags"], tags.filter(tag => tag.recipe_document_tag_id != action.recipe_document_tag_id));
     }
+
+    static setSelectedWordIDs(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        return state
+            .set("selectedWordIDs", action.wordIDs)
+    }
 }
 
 export class RecipeDocumentService extends ObjectService {
@@ -205,7 +210,8 @@ export class RecipeDocumentService extends ObjectService {
         tags: 'GET_RECIPE_DOCUMENT_TAGS',
         setSelectedDocumentID: 'SET_SELECTED_RECIPE_DOCUMENT',
         createTag: 'CREATE_RECIPE_DOCUMENT_TAG',
-        deleteTag: 'DELETE_RECIPE_DOCUMENT_TAG'
+        deleteTag: 'DELETE_RECIPE_DOCUMENT_TAG',
+        setSelectedWordIDs: 'SET_SELECTED_WORD_IDS'
     });
 
     static endpoints: Immutable.Map<string, string & Function> = ObjectService.endpoints.merge({
@@ -214,7 +220,7 @@ export class RecipeDocumentService extends ObjectService {
         words: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/words/",
         tags: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/",
         createTag: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/",
-        deleteTag: (documentId: number, tagId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/" + tagId + "/",
+        deleteTag: (documentId: number, tagId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/" + tagId + "/"
     });
 
     static reducers = RecipeDocumentReducer;
@@ -248,6 +254,12 @@ export class RecipeDocumentService extends ObjectService {
         this.store.dispatch({type: actions.get("setSelectedDocumentID"), documentId: documentId});
     }
 
+    setSelectedWordIDs(wordIDs) {
+        var constructor = (this.constructor as typeof RecipeDocumentService),
+            actions = constructor.actions;
+        this.store.dispatch({type: actions.get("setSelectedWordIDs"), wordIDs: wordIDs});
+    }
+
     reduce(state: Immutable.Map<string, any>, action): Immutable.Map<any, any> {
         var constructor = (this.constructor as typeof RecipeDocumentService),
             actions = constructor.actions,
@@ -257,6 +269,8 @@ export class RecipeDocumentService extends ObjectService {
                 return reducers.words(state, action);
             case actions.get("setSelectedDocumentID"):
                 return reducers.setSelectedDocument(state, action);
+            case actions.get("setSelectedWordIDs"):
+                return reducers.setSelectedWordIDs(state, action);
             default:
                 return super.reduce(state, action);
         }

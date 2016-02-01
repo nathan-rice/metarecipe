@@ -161,10 +161,10 @@ export class FormattedDocument extends React.Component<any, any> {
 }
 
 interface IListProperties {
-    items: Immutable.List<ListItem>;
+    items: Immutable.Iterable<any, Immutable.List<crud.RecipeDocumentWord>>;
 }
 
-class List extends React.Component<any, any> {
+class List extends React.Component<IListProperties, any> {
     render() {
         let items = this.props.items.map(item => <ListItem words={item}/>);
         return (
