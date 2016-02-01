@@ -6,7 +6,6 @@
 
 import Immutable = require('immutable');
 import jQuery = require('jquery');
-import rangy = require('rangy');
 
 
 class ObjectReducer {
