@@ -147,16 +147,20 @@ export class FormattedDocument extends React.Component<any, any> {
         }
     }
 
-    maybeSelectedText(event) {
+    selectWords(event) {
         var selectionHtml = rangy.getSelection().toHtml(),
-            elements = jQuery(selectionHtml).find('.document-word'),
-            ids = elements.map((i, el) => parseInt(el.id));
-        var jqs = jQuery(selection.toHtml());
+            elements = jQuery(selectionHtml);
+        if (selectionHtml.length > 0) {
+            // if (selectionHtml.length)
+            elements = jQuery(selectionHtml).find('.document-word').add();
+        }
+        var ids = elements.map((i, el) => parseInt(el.id));
+        api.crud.recipeDocument.setSelectedWordIDs(ids);
     };
 
     componentDidMount() {
         this.getWords();
-        document.onmouseup = this.maybeSelectedText;
+        document.onmouseup = this.selectWords;
     }
 
     componentDidUpdate(oldState, oldProps) {
