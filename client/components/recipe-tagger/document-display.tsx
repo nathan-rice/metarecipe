@@ -1,12 +1,13 @@
 /// <reference path="../../definitions/react/react.d.ts" />
 /// <reference path="../../definitions/react/react-global.d.ts" />
 /// <reference path="../../definitions/immutable/immutable.d.ts" />
+/// <reference path="../../definitions/rangy/rangy.d.ts" />
 
 import api = require('api');
 import crud = require('crud');
 import React = require('react');
+import jQuery = require('jquery');
 import Immutable = require('immutable');
-
 
 interface IDocumentListProperties {
     documents: Immutable.List<crud.RecipeDocument>;
@@ -105,27 +106,28 @@ export class FormattedDocument extends React.Component<any, any> {
                 tags = tags.skipWhile(tagIsLI) as Immutable.List<Immutable.List<crud.RecipeDocumentWord>>;
             }
             else {
+                let key = tags.first().first().recipe_document_word_id;
                 switch (elementTag) {
                     case 'p':
-                        currentMarkup.push(<Paragraph words={tags.first()}/>);
+                        currentMarkup.push(<Paragraph key={key} words={tags.first()}/>);
                         break;
                     case 'h1':
-                        currentMarkup.push(<Heading1 words={tags.first()}/>);
+                        currentMarkup.push(<Heading1 key={key} words={tags.first()}/>);
                         break;
                     case 'h2':
-                        currentMarkup.push(<Heading2 words={tags.first()}/>);
+                        currentMarkup.push(<Heading2 key={key} words={tags.first()}/>);
                         break;
                     case 'h3':
-                        currentMarkup.push(<Heading3 words={tags.first()}/>);
+                        currentMarkup.push(<Heading3 key={key} words={tags.first()}/>);
                         break;
                     case 'h4':
-                        currentMarkup.push(<Heading4 words={tags.first()}/>);
+                        currentMarkup.push(<Heading4 key={key} words={tags.first()}/>);
                         break;
                     case 'h5':
-                        currentMarkup.push(<Heading5 words={tags.first()}/>);
+                        currentMarkup.push(<Heading5 key={key} words={tags.first()}/>);
                         break;
                     case 'h6':
-                        currentMarkup.push(<Heading6 words={tags.first()}/>);
+                        currentMarkup.push(<Heading6 key={key} words={tags.first()}/>);
                         break;
                     default:
                         let mapper = word => <DocumentWord key={word.recipe_document_word_id} word={word}/>;
@@ -145,8 +147,16 @@ export class FormattedDocument extends React.Component<any, any> {
         }
     }
 
+    maybeSelectedText(event) {
+        var selectionHtml = rangy.getSelection().toHtml(),
+            elements = jQuery(selectionHtml).find('.document-word'),
+            ids = elements.map((i, el) => parseInt(el.id));
+        var jqs = jQuery(selection.toHtml());
+    };
+
     componentDidMount() {
         this.getWords();
+        document.onmouseup = this.maybeSelectedText;
     }
 
     componentDidUpdate(oldState, oldProps) {
@@ -161,12 +171,12 @@ export class FormattedDocument extends React.Component<any, any> {
 }
 
 interface IListProperties {
-    items: Immutable.List<ListItem>;
+    items: Immutable.Iterable<any, Immutable.List<crud.RecipeDocumentWord>>;
 }
 
-class List extends React.Component<any, any> {
+class List extends React.Component<IListProperties, any> {
     render() {
-        let items = this.props.items.map(item => <ListItem words={item}/>);
+        let items = this.props.items.map(item => <ListItem key={item.first().recipe_document_word_id} words={item}/>);
         return (
             <ul>{items}</ul>
         )
@@ -175,6 +185,7 @@ class List extends React.Component<any, any> {
 
 interface ITagProperties {
     words: Immutable.List<crud.RecipeDocumentWord>;
+    key: number;
 }
 
 class ListItem extends React.Component<ITagProperties, any> {
@@ -259,7 +270,7 @@ class DocumentWord extends React.Component<IDocumentWordProperties, any> {
         var word = this.props.word,
             text = word.original_format ? word.original_format : " " + word.word;
         return (
-            <span data-wordId={word.recipe_document_word_id}>{text}</span>
+            <span className="document-word" id={word.recipe_document_word_id.toString()}>{text}</span>
         )
     }
 }
