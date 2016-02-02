@@ -148,13 +148,19 @@ export class FormattedDocument extends React.Component<any, any> {
     }
 
     selectWords(event) {
-        var selectionHtml = rangy.getSelection().toHtml(),
-            elements = jQuery(selectionHtml);
+        var selection = rangy.getSelection(),
+            selectionHtml = selection.toHtml(),
+            elements = jQuery(selectionHtml),
+            getWordElements = el => el.find('span.document-word').add(el.filter('span.document-word')),
+            wordElements, parentNode = selection.anchorNode.parentNode;
         if (selectionHtml.length > 0) {
-            // if (selectionHtml.length)
-            elements = jQuery(selectionHtml).find('.document-word').add();
+            wordElements = getWordElements(elements);
+            if (wordElements.length == 0) {
+                // This will occur if less than an entire word is selected
+                if (parentNode) wordElements.add(jQuery(parentNode));
+            }
         }
-        var ids = elements.map((i, el) => parseInt(el.id));
+        var ids = wordElements.map((i, el) => parseInt(el.id));
         api.crud.recipeDocument.setSelectedWordIDs(ids);
     };
 
