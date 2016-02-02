@@ -73,17 +73,29 @@ def get_recipe_document_word_tags(document_id):
 
 
 @crud.route('/recipe_document/<int:document_id>/tags/', methods=["POST"])
-def create_recipe_document_word_tag(document_id):
-    pass
+def create_recipe_document_word_tags(document_id):
+    tags_json = request.get_json()
+    recipe_document_tag_set = models.RecipeDocumentTagSet.query\
+        .filter(models.RecipeDocumentTagSet.recipe_document_id == document_id)\
+        .first()
+    if not recipe_document_tag_set:
+        recipe_document_tag_set = models.RecipeDocumentTagSet(recipe_document_id=document_id)
+        models.db.session.add(recipe_document_tag_set)
+    for tag_dict in tags_json:
+        tag = models.RecipeDocumentWordTag(word=tag_dict["recipe_document_word_id"], tag=tag_dict["tag"])
+        recipe_document_tag_set.tags.append(tag)
+    models.db.session.commit()
+    return jsonify(tags=[tag.as_dict for tag in recipe_document_tag_set.tags])
 
 
-@crud.route('/recipe_document/<int:document_id>/tags/<int:tag_id>/', methods=["DELETE"])
-def delete_recipe_document_word_tag(document_id, tag_id):
+@crud.route('/recipe_document/<int:document_id>/tags/', methods=["DELETE"])
+def delete_recipe_document_word_tag(document_id):
+    tag_ids = request.get_json()
     deleted = models.RecipeDocumentWordTag.query\
-        .filter(models.RecipeDocumentWordTag.recipe_document_word_tag_id == tag_id)\
+        .filter(models.RecipeDocumentWordTag.recipe_document_word_tag_id.in_(tag_ids))\
         .delete()
     if not deleted:
         return abort(404)
     else:
-        return jsonify(recipe_document_word_tag_id=tag_id)
+        return jsonify(deleted=deleted)
 

@@ -99,14 +99,14 @@ export class FormattedDocument extends React.Component<any, any> {
             tagIsLI = (tag) => (tag.first().element_tag == 'li');
         while (tags.first()) {
             let elementTag = tags.first().first().element_tag,
-                tagGroup = tags.takeWhile(tagIsLI);
+                tagGroup = tags.takeWhile(tagIsLI),
+                key = tags.first().first().recipe_document_word_id;;
 
             if (tagGroup.size > 0) {
-                currentMarkup.push(<List items={tagGroup}/>);
+                currentMarkup.push(<List key={key} items={tagGroup}/>);
                 tags = tags.skipWhile(tagIsLI) as Immutable.List<Immutable.List<crud.RecipeDocumentWord>>;
             }
             else {
-                let key = tags.first().first().recipe_document_word_id;
                 switch (elementTag) {
                     case 'p':
                         currentMarkup.push(<Paragraph key={key} words={tags.first()}/>);
@@ -152,16 +152,19 @@ export class FormattedDocument extends React.Component<any, any> {
             selectionHtml = selection.toHtml(),
             elements = jQuery(selectionHtml),
             getWordElements = el => el.find('span.document-word').add(el.filter('span.document-word')),
-            wordElements, parentNode = selection.anchorNode.parentNode;
+            wordElements, parentNode, ids;
         if (selectionHtml.length > 0) {
             wordElements = getWordElements(elements);
             if (wordElements.length == 0) {
                 // This will occur if less than an entire word is selected
-                if (parentNode) wordElements.add(jQuery(parentNode));
+                parentNode = selection.anchorNode.parentNode;
+                if (parentNode) {
+                    wordElements = jQuery(parentNode);
+                }
             }
+            ids = wordElements.map((i, el) => parseInt(el.id));
+            api.crud.recipeDocument.setSelectedWordIDs(ids);
         }
-        var ids = wordElements.map((i, el) => parseInt(el.id));
-        api.crud.recipeDocument.setSelectedWordIDs(ids);
     };
 
     componentDidMount() {
@@ -182,6 +185,7 @@ export class FormattedDocument extends React.Component<any, any> {
 
 interface IListProperties {
     items: Immutable.Iterable<any, Immutable.List<crud.RecipeDocumentWord>>;
+    key: number;
 }
 
 class List extends React.Component<IListProperties, any> {

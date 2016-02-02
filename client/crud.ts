@@ -178,18 +178,20 @@ class RecipeDocumentReducer extends ObjectReducer {
             .setIn(["documents", action.documentId, "tags"], Immutable.List(action.tags).map(RecipeDocumentWordTag.fromObject));
     }
 
-    static createTag(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-        let tags = state.getIn(["documents", action.documentId, "tags"]);
+    static createTags(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        let oldTags = state.getIn(["documents", action.documentId, "tags"]),
+            newTags = action.tags.map(RecipeDocumentWordTag.fromObject);
         return state
             .mergeIn(["documents", action.documentId], {})
-            .setIn(["documents", action.documentId, "tags"], tags.push(RecipeDocumentWordTag.fromObject(action.tag)));
+            .setIn(["documents", action.documentId, "tags"], oldTags.concat(newTags));
     }
 
-    static deleteTag(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-        let tags = state.getIn(["documents", action.documentId, "tags"]);
+    static deleteTags(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+        let tags = state.getIn(["documents", action.documentID, "tags"]),
+            isNotDeletedTag = tag => action.tagIDs.indexOf(tag.recipe_document_tag_id) == -1;
         return state
-            .mergeIn(["documents", action.documentId], {})
-            .setIn(["documents", action.documentId, "tags"], tags.filter(tag => tag.recipe_document_tag_id != action.recipe_document_tag_id));
+            .mergeIn(["documents", action.documentID], {})
+            .setIn(["documents", action.documentID, "tags"], tags.filter(isNotDeletedTag));
     }
 
     static setSelectedWordIDs(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
@@ -208,8 +210,8 @@ export class RecipeDocumentService extends ObjectService {
         words: 'GET_RECIPE_DOCUMENT_WORDS',
         tags: 'GET_RECIPE_DOCUMENT_TAGS',
         setSelectedDocumentID: 'SET_SELECTED_RECIPE_DOCUMENT',
-        createTag: 'CREATE_RECIPE_DOCUMENT_TAG',
-        deleteTag: 'DELETE_RECIPE_DOCUMENT_TAG',
+        createTags: 'CREATE_RECIPE_DOCUMENT_TAGS',
+        deleteTags: 'DELETE_RECIPE_DOCUMENT_TAGS',
         setSelectedWordIDs: 'SET_SELECTED_WORD_IDS'
     });
 
@@ -218,8 +220,8 @@ export class RecipeDocumentService extends ObjectService {
         read: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/",
         words: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/words/",
         tags: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/",
-        createTag: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/",
-        deleteTag: (documentId: number, tagId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/" + tagId + "/"
+        createTags: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/",
+        deleteTags: (documentId: number) => RecipeDocumentService.crudRoot + documentId + "/tags/"
     });
 
     static reducers = RecipeDocumentReducer;
@@ -270,6 +272,10 @@ export class RecipeDocumentService extends ObjectService {
                 return reducers.setSelectedDocument(state, action);
             case actions.get("setSelectedWordIDs"):
                 return reducers.setSelectedWordIDs(state, action);
+            case actions.get("deleteTags"):
+                return reducers.deleteTags(state, action);
+            case actions.get("createTags"):
+                return reducers.createTags(state, action);
             default:
                 return super.reduce(state, action);
         }
@@ -311,12 +317,21 @@ export class RecipeDocumentService extends ObjectService {
         });
     }
 
-    createTag(documentId: number) {
+    createTags(documentId: number) {
         var constructor = (this.constructor as typeof RecipeDocumentService),
             endpoints = constructor.endpoints,
             actions = constructor.actions;
-        return jQuery.post(endpoints.get("tags")(documentId)).then(data => {
+        return jQuery.post(endpoints.get("createTags")(documentId)).then(data => {
             this.store.dispatch({type: actions.get("tags"), documentId: documentId, words: data.tags});
+        });
+    }
+
+    deleteTags(documentId: number) {
+        var constructor = (this.constructor as typeof RecipeDocumentService),
+            endpoints = constructor.endpoints,
+            actions = constructor.actions;
+        return jQuery.post(endpoints.get("deleteTags")(documentId)).then(data => {
+            this.store.dispatch({type: actions.get("createTags"), documentId: documentId, words: data.tags});
         });
     }
 }
