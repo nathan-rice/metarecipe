@@ -1,5 +1,6 @@
 require.config({
     baseUrl: "/client/",
+    urlArgs: "bust=" + (new Date()).getTime(),
     paths: {
         "jquery": "/client/libraries/jquery",
         "redux": "/client/libraries/redux",

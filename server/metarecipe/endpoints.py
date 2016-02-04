@@ -72,9 +72,19 @@ def get_recipe_document_word_tags(document_id):
     return jsonify(tags=[tag.as_dict for tag in tags])
 
 
-@crud.route('/recipe_document/<int:document_id>/tags/', methods=["POST"])
-def create_recipe_document_word_tags(document_id):
+@crud.route('/recipe_document_word_tag/', methods=["POST"])
+def create_recipe_document_word_tags():
     tags_json = request.get_json()
+    if not tags_json:
+        return ""
+    # It is assumed that all words are from the same document, it might be a good idea to check and enforce this in
+    # the future.
+    document = models.RecipeDocument.query\
+        .join(models.RecipeDocumentWord)\
+        .filter(models.RecipeDocumentWord.recipe_document_word_id == tags_json[0]["recipe_document_word_id"])\
+        .first()
+    document_id = document.recipe_document_id
+    # TODO: update tagset creation to be user specific (when we have users)
     recipe_document_tag_set = models.RecipeDocumentTagSet.query\
         .filter(models.RecipeDocumentTagSet.recipe_document_id == document_id)\
         .first()
@@ -82,18 +92,23 @@ def create_recipe_document_word_tags(document_id):
         recipe_document_tag_set = models.RecipeDocumentTagSet(recipe_document_id=document_id)
         models.db.session.add(recipe_document_tag_set)
     for tag_dict in tags_json:
-        tag = models.RecipeDocumentWordTag(word=tag_dict["recipe_document_word_id"], tag=tag_dict["tag"])
-        recipe_document_tag_set.tags.append(tag)
+        tag = models.RecipeDocumentWordTag(
+            tag_set=recipe_document_tag_set,
+            recipe_document_word_id=tag_dict["recipe_document_word_id"],
+            tag=tag_dict["tag"]
+        )
+        models.db.session.add(tag)
     models.db.session.commit()
     return jsonify(tags=[tag.as_dict for tag in recipe_document_tag_set.tags])
 
 
-@crud.route('/recipe_document/<int:document_id>/tags/', methods=["DELETE"])
-def delete_recipe_document_word_tag(document_id):
+@crud.route('/recipe_document_word_tag/', methods=["DELETE"])
+def delete_recipe_document_word_tag():
     tag_ids = request.get_json()
     deleted = models.RecipeDocumentWordTag.query\
         .filter(models.RecipeDocumentWordTag.recipe_document_word_tag_id.in_(tag_ids))\
         .delete()
+    models.db.session.commit()
     if not deleted:
         return abort(404)
     else:

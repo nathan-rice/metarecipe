@@ -15,10 +15,12 @@ class BaseDemoInterface extends React.Component<any, any> {
         return (
             <div className="container">
                 <div className="row">
-                    <div className="col-sm-6" dangerouslySetInnerHTML={{__html: html}}>
-                    </div>
-                    <div className="col-sm-6">
+
+                    <div className="col-sm-8">
                         <DocumentDisplay.FormattedDocument document={document}/>
+                    </div>
+                    <div className="col-sm-4 col-sm-offset-8" style={{position: "fixed"}}>
+                        <DocumentDisplay.TagPallet></DocumentDisplay.TagPallet>
                     </div>
                 </div>
                 <div className="row">

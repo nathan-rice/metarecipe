@@ -1,0 +1,15 @@
+.ingredients-list {
+    background-color: seashell;
+}
+
+.ingredients-list.ingredient-quantity, .ingredient-quantity {
+    background-color: darkkhaki;
+}
+
+.ingredients-list.ingredient-unit, .ingredient-unit {
+    background-color: gold;
+}
+
+.ingredients-list.ingredient-preparation, .ingredient-preparation {
+    background-color: lightpink;
+}

@@ -147,7 +147,15 @@ export class FormattedDocument extends React.Component<any, any> {
         }
     }
 
-    selectWords(event) {
+    getTags() {
+        var document = this.props.document,
+            tags = document ? document.tags.size : null;
+        if (document && !tags) {
+            api.crud.recipeDocument.tags(document.recipe_document_id);
+        }
+    }
+
+    selectWords(e) {
         var selection = rangy.getSelection(),
             selectionHtml = selection.toHtml(),
             elements = jQuery(selectionHtml),
@@ -169,11 +177,16 @@ export class FormattedDocument extends React.Component<any, any> {
 
     componentDidMount() {
         this.getWords();
+        this.getTags();
         document.onmouseup = this.selectWords;
     }
 
     componentDidUpdate(oldState, oldProps) {
-        this.getWords();
+        // Only update words and tags from the server if the component updated due to a change in the selected document.
+        if (!oldProps || !oldProps.document || oldProps.document.recipe_document_id != this.props.document.recipe_document_id) {
+            this.getWords();
+            this.getTags();
+        }
     }
 
     render() {
@@ -282,9 +295,34 @@ interface IDocumentWordProperties {
 class DocumentWord extends React.Component<IDocumentWordProperties, any> {
     render() {
         var word = this.props.word,
-            text = word.original_format ? word.original_format : " " + word.word;
+            text = word.original_format ? word.original_format : " " + word.word,
+            tags = api.crud.recipeDocument.getTagsForWord(this.props.word),
+            classes = tags.reduce((old, current) => old + " " + current.tag, "document-word");
         return (
-            <span className="document-word" id={word.recipe_document_word_id.toString()}>{text}</span>
+            <span className={classes} id={word.recipe_document_word_id.toString()}>{text}</span>
+        )
+    }
+}
+
+export class TagPallet extends React.Component<any, any> {
+
+    addTag(tagText) {
+        return () => {
+            return api.crud.recipeDocumentWordTag.create(tagText, api.crud.recipeDocument.getSelectedWordIDs());
+        }
+
+    }
+
+    render() {
+        return (
+            <div>
+                <ul className="list-inline">
+                    <li><button onClick={this.addTag("ingredients-list")} className="btn">ingredients list</button></li>
+                    <li><button onClick={this.addTag("ingredient-quantity")} className="btn">ingredient quantity</button></li>
+                    <li><button onClick={this.addTag("ingredient-unit")} className="btn">ingredient unit</button></li>
+                    <li><button onClick={this.addTag("ingredient-preparation")} className="btn">ingredient preparation</button></li>
+                </ul>
+            </div>
         )
     }
 }
