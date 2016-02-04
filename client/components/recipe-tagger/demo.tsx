@@ -36,7 +36,8 @@ class BaseDemoInterface extends React.Component<any, any> {
 function getDemoInterfaceProps(state) {
     return {
         documentID: state.crud.getIn(["recipeDocument", "selectedDocumentID"]),
-        documents: state.crud.getIn(["recipeDocument", "documents"])
+        documents: state.crud.getIn(["recipeDocument", "documents"]),
+        tags: state.crud.getIn(["recipeDocumentWordTag", "tags"])
     }
 }
 

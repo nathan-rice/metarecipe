@@ -63,8 +63,9 @@ def get_recipe_document_words(document_id):
     return jsonify(words=[word.as_dict for word in words])
 
 
-@crud.route('/recipe_document/<int:document_id>/tags/')
-def get_recipe_document_word_tags(document_id):
+@crud.route('/recipe_document_word_tag/')
+def get_recipe_document_word_tags():
+    document_id = request.args.get("recipe_document_id")
     tags = models.RecipeDocumentWordTag.query\
         .join(models.RecipeDocumentTagSet)\
         .filter(models.RecipeDocumentTagSet.recipe_document_id == document_id)\

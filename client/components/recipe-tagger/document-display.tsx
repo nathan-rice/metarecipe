@@ -296,7 +296,7 @@ class DocumentWord extends React.Component<IDocumentWordProperties, any> {
     render() {
         var word = this.props.word,
             text = word.original_format ? word.original_format : " " + word.word,
-            tags = api.crud.recipeDocument.getTagsForWord(this.props.word),
+            tags = api.crud.recipeDocumentWordTag.getTagsForWord(this.props.word),
             classes = tags.reduce((old, current) => old + " " + current.tag, "document-word");
         return (
             <span className={classes} id={word.recipe_document_word_id.toString()}>{text}</span>

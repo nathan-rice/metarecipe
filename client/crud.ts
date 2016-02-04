@@ -241,11 +241,6 @@ export class RecipeDocumentService extends ObjectService {
         return this.getState().get("selectedWordIDs");
     }
 
-    getTagsForWord(word: RecipeDocumentWord) {
-        var tags = this.getState().getIn(["documents", this.getSelectedDocumentID(), "tags"]);
-        return tags.filter((tag: RecipeDocumentWordTag) => tag.recipe_document_word_id == word.recipe_document_word_id);
-    }
-
     reduce(state: Immutable.Map<string, any>, action): Immutable.Map<any, any> {
         var constructor = (this.constructor as typeof RecipeDocumentService),
             actions = constructor.actions,
@@ -253,8 +248,6 @@ export class RecipeDocumentService extends ObjectService {
         switch (action.type) {
             case actions.words:
                 return reducers.words(state, action);
-            case actions.tags:
-                return reducers.tags(state, action);
             case actions.setSelectedDocumentID:
                 return reducers.setSelectedDocument(state, action);
             case actions.setSelectedWordIDs:
@@ -290,15 +283,6 @@ export class RecipeDocumentService extends ObjectService {
             this.store.dispatch({type: actions.words, documentID: documentId, words: data.words});
         });
     }
-
-    tags(documentId: number) {
-        var constructor = (this.constructor as typeof RecipeDocumentService),
-            endpoints = constructor.endpoints,
-            actions = constructor.actions;
-        return jQuery.getJSON(endpoints.tags(documentId)).then(data => {
-            this.store.dispatch({type: actions.tags, documentID: documentId, tags: data.tags});
-        });
-    }
 }
 
 export class RecipeDocumentWordTagService extends ObjectService {
@@ -308,25 +292,35 @@ export class RecipeDocumentWordTagService extends ObjectService {
     static endpoints = class Endpoints extends ObjectService.endpoints {
         static create = RecipeDocumentWordTagService.crudRoot;
         static delete = RecipeDocumentWordTagService.crudRoot;
+        static loadDocumentWordTags = (documentID) => RecipeDocumentWordTagService.crudRoot + "&recipe_document=" + documentID;
     };
+
+    static defaultState:Immutable.Map<string, any> = Immutable.fromJS({
+        tags: []
+    });
 
     static reducers = class Reducers extends ObjectService.reducers {
         static create(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-            let oldTags = state.getIn(["documents", action.documentId, "tags"]),
+            let oldTags = state.get("tags"),
                 newTags = action.tags.map(RecipeDocumentWordTag.fromObject);
-            return state
-                .mergeIn(["documents", action.documentID], {})
-                .setIn(["documents", action.documentID, "tags"], oldTags.concat(newTags));
+            return state.set("tags", oldTags.concat(newTags));
         }
 
         static delete(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-            let tags = state.getIn(["documents", action.documentID, "tags"]),
+            let tags = state.get("tags"),
                 isNotDeletedTag = tag => action.tagIDs.indexOf(tag.recipe_document_tag_id) == -1;
-            return state
-                .mergeIn(["documents", action.documentID], {})
-                .setIn(["documents", action.documentID, "tags"], tags.filter(isNotDeletedTag));
+            return state.set("tags", tags.filter(isNotDeletedTag));
         }
     };
+
+    reduce(state, action) {
+        if (action.type == actions.loadDocumentWordTags) {
+            return reducers.loadDocumentWordTags(state, action);
+        }
+        else {
+            return super.reduce(state, action);
+        }
+    }
 
     create(tagText: string, words: Immutable.Iterable<number, number>) {
         var constructor = (this.constructor as typeof RecipeDocumentWordTagService),
@@ -354,6 +348,20 @@ export class RecipeDocumentWordTagService extends ObjectService {
             contentType: "application/json; charset=utf-8",
             success: () => this.store.dispatch({type: actions.delete, tagIDs: tagIDs})
         });
+    }
+
+    loadDocumentWordTags(documentId: number) {
+        var constructor = (this.constructor as typeof RecipeDocumentWordTagService),
+            endpoints = constructor.endpoints,
+            actions = constructor.actions;
+        return jQuery.getJSON(endpoints.tags(documentId)).then(data => {
+            this.store.dispatch({type: actions.tags, documentID: documentId, tags: data.tags});
+        });
+    }
+
+    getTagsForWord(word: RecipeDocumentWord) {
+        var tagIsForWord = (tag: RecipeDocumentWordTag) => tag.recipe_document_word_id == word.recipe_document_word_id;
+        return this.getState().get("tags").filter(tagIsForWord);
     }
 }
 
@@ -388,7 +396,8 @@ export class ObjectManager {
             state = constructor.defaultState;
         }
         return state
-            .set("recipeDocument", this.recipeDocument.reduce(state.get("recipeDocument"), action));
+            .set("recipeDocument", this.recipeDocument.reduce(state.get("recipeDocument"), action))
+            .set("recipeDocumentWordTag", this.recipeDocumentWordTag.reduce(state.get("recipeDocumentWordTag"), action));
     }
 
     protected setBindings() {
