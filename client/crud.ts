@@ -189,12 +189,6 @@ export class RecipeDocumentService extends ObjectService {
                 .setIn(["documents", action.documentID, "words"], Immutable.List(action.words).map(RecipeDocumentWord.fromObject));
         }
 
-        static tags(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
-            return state
-                .mergeIn(["documents", action.documentID], {})
-                .setIn(["documents", action.documentID, "tags"], Immutable.List(action.tags).map(RecipeDocumentWordTag.fromObject));
-        }
-
         static setSelectedWordIDs(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
             return state
                 .set("selectedWordIDs", Immutable.List(action.wordIDs))
@@ -292,7 +286,11 @@ export class RecipeDocumentWordTagService extends ObjectService {
     static endpoints = class Endpoints extends ObjectService.endpoints {
         static create = RecipeDocumentWordTagService.crudRoot;
         static delete = RecipeDocumentWordTagService.crudRoot;
-        static loadDocumentWordTags = (documentID) => RecipeDocumentWordTagService.crudRoot + "&recipe_document=" + documentID;
+        static loadDocumentWordTags = (documentID) => RecipeDocumentWordTagService.crudRoot + "?recipe_document_id=" + documentID;
+    };
+
+    static actions = class Actions extends ObjectService.actions {
+        static loadDocumentWordTags = "LOAD_RECIPE_DOCUMENT_WORD_TAGS"
     };
 
     static defaultState:Immutable.Map<string, any> = Immutable.fromJS({
@@ -311,9 +309,18 @@ export class RecipeDocumentWordTagService extends ObjectService {
                 isNotDeletedTag = tag => action.tagIDs.indexOf(tag.recipe_document_tag_id) == -1;
             return state.set("tags", tags.filter(isNotDeletedTag));
         }
+
+        static loadDocumentWordTags(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
+            let oldTags = state.get("tags"),
+                newTags = action.tags.map(RecipeDocumentWordTag.fromObject);
+            return state.set("tags", oldTags.concat(newTags));
+        }
     };
 
     reduce(state, action) {
+        var constructor = (this.constructor as typeof RecipeDocumentWordTagService),
+            reducers = constructor.reducers,
+            actions = constructor.actions;
         if (action.type == actions.loadDocumentWordTags) {
             return reducers.loadDocumentWordTags(state, action);
         }
@@ -354,8 +361,8 @@ export class RecipeDocumentWordTagService extends ObjectService {
         var constructor = (this.constructor as typeof RecipeDocumentWordTagService),
             endpoints = constructor.endpoints,
             actions = constructor.actions;
-        return jQuery.getJSON(endpoints.tags(documentId)).then(data => {
-            this.store.dispatch({type: actions.tags, documentID: documentId, tags: data.tags});
+        return jQuery.getJSON(endpoints.loadDocumentWordTags(documentId)).then(data => {
+            this.store.dispatch({type: actions.loadDocumentWordTags, documentID: documentId, tags: data.tags});
         });
     }
 

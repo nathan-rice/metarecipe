@@ -151,7 +151,7 @@ export class FormattedDocument extends React.Component<any, any> {
         var document = this.props.document,
             tags = document ? document.tags.size : null;
         if (document && !tags) {
-            api.crud.recipeDocument.tags(document.recipe_document_id);
+            api.crud.recipeDocumentWordTag.loadDocumentWordTags(document.recipe_document_id);
         }
     }
 
@@ -181,7 +181,7 @@ export class FormattedDocument extends React.Component<any, any> {
         document.onmouseup = this.selectWords;
     }
 
-    componentDidUpdate(oldState, oldProps) {
+    componentDidUpdate(oldProps) {
         // Only update words and tags from the server if the component updated due to a change in the selected document.
         if (!oldProps || !oldProps.document || oldProps.document.recipe_document_id != this.props.document.recipe_document_id) {
             this.getWords();
@@ -320,6 +320,7 @@ export class TagPallet extends React.Component<any, any> {
                     <li><button onClick={this.addTag("ingredients-list")} className="btn">ingredients list</button></li>
                     <li><button onClick={this.addTag("ingredient-quantity")} className="btn">ingredient quantity</button></li>
                     <li><button onClick={this.addTag("ingredient-unit")} className="btn">ingredient unit</button></li>
+                    <li><button onClick={this.addTag("ingredient-unit")} className="btn">ingredient name</button></li>
                     <li><button onClick={this.addTag("ingredient-preparation")} className="btn">ingredient preparation</button></li>
                 </ul>
             </div>

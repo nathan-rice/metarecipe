@@ -19,7 +19,7 @@ class BaseDemoInterface extends React.Component<any, any> {
                     <div className="col-sm-8">
                         <DocumentDisplay.FormattedDocument document={document}/>
                     </div>
-                    <div className="col-sm-4 col-sm-offset-8" style={{position: "fixed"}}>
+                    <div className="col-sm-3 col-sm-offset-6" style={{position: "fixed"}}>
                         <DocumentDisplay.TagPallet></DocumentDisplay.TagPallet>
                     </div>
                 </div>

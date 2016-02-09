@@ -1,9 +1,9 @@
 .ingredients-list {
-    background-color: seashell;
+    background-color: lightskyblue;
 }
 
 .ingredients-list.ingredient-quantity, .ingredient-quantity {
-    background-color: darkkhaki;
+    background-color: #5fbd48;
 }
 
 .ingredients-list.ingredient-unit, .ingredient-unit {
