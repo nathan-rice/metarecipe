@@ -235,6 +235,13 @@ export class RecipeDocumentService extends ObjectService {
         return this.getState().get("selectedWordIDs");
     }
 
+    getSelectedWords(): Immutable.Iterable<number, RecipeDocumentWord> {
+        var selectedWordIDs = Immutable.Set(this.getSelectedWordIDs()),
+            selectedDocumentWords = this.getSelectedDocument().words,
+            wordIsSelected = word => selectedWordIDs.contains(word.recipe_document_word_id);
+        return selectedDocumentWords.filter(wordIsSelected)
+    }
+
     reduce(state: Immutable.Map<string, any>, action): Immutable.Map<any, any> {
         var constructor = (this.constructor as typeof RecipeDocumentService),
             actions = constructor.actions,
@@ -369,6 +376,10 @@ export class RecipeDocumentWordTagService extends ObjectService {
     getTagsForWord(word: RecipeDocumentWord) {
         var tagIsForWord = (tag: RecipeDocumentWordTag) => tag.recipe_document_word_id == word.recipe_document_word_id;
         return this.getState().get("tags").filter(tagIsForWord);
+    }
+
+    getCommonTagsForWords(words: RecipeDocumentWord[]) {
+        // words.map()
     }
 }
 

@@ -45,7 +45,27 @@ class DocumentListEntry extends React.Component<any, any> {
     }
 }
 
+function interleaveSpaces(words: Immutable.List<crud.RecipeDocumentWord>) {
+    var lastWord, elements = [];
+    words.forEach(word => {
+        let isNonSymbolWord = !word.original_format || word.word == '#',
+            wordNeedsWhiteSpace = lastWord ? lastWord.word != '(' && isNonSymbolWord : false;
+        if  (wordNeedsWhiteSpace) {
+            elements.push(' ');
+        }
+        elements.push(<DocumentWord key={word.recipe_document_word_id} word={word}/>);
+        lastWord = word;
+    });
+    return elements;
+}
+
 export class FormattedDocument extends React.Component<any, any> {
+
+    constructor() {
+        this.selectWords.bind = this.selectWords.bind(this);
+        this.state = {selectionRect: null};
+        super();
+    }
 
     static firstTag(words: Immutable.List<crud.RecipeDocumentWord>): Immutable.List<crud.RecipeDocumentWord> {
         var word;
@@ -100,7 +120,7 @@ export class FormattedDocument extends React.Component<any, any> {
         while (tags.first()) {
             let elementTag = tags.first().first().element_tag,
                 tagGroup = tags.takeWhile(tagIsLI),
-                key = tags.first().first().recipe_document_word_id;;
+                key = tags.first().first().recipe_document_word_id;
 
             if (tagGroup.size > 0) {
                 currentMarkup.push(<List key={key} items={tagGroup}/>);
@@ -130,8 +150,7 @@ export class FormattedDocument extends React.Component<any, any> {
                         currentMarkup.push(<Heading6 key={key} words={tags.first()}/>);
                         break;
                     default:
-                        let mapper = word => <DocumentWord key={word.recipe_document_word_id} word={word}/>;
-                        currentMarkup.push(tags.first().map(mapper));
+                        currentMarkup.push(interleaveSpaces(tags.first()));
                 }
                 tags = tags.shift();
             }
@@ -172,6 +191,7 @@ export class FormattedDocument extends React.Component<any, any> {
             }
             ids = wordElements.map((i, el) => parseInt(el.id));
             api.crud.recipeDocument.setSelectedWordIDs(ids);
+            this.setState({selectionRect: selection.getRangeAt(0).nativeRange.getBoundingClientRect()})
         }
     };
 
@@ -191,8 +211,10 @@ export class FormattedDocument extends React.Component<any, any> {
 
     render() {
         let document = this.props.document,
-            words = document ? FormattedDocument.tagWordsToMarkup(document.words) : '';
-        return (<div>{words}</div>);
+            words = document ? FormattedDocument.tagWordsToMarkup(document.words) : '',
+            rect = this.state.selectionRect,
+            tagPallet = rect ? <TagPallet top={rect.top} left={rect.left}/> : '';
+        return (<div>{words}{tagPallet}</div>);
     }
 }
 
@@ -217,7 +239,7 @@ interface ITagProperties {
 
 class ListItem extends React.Component<ITagProperties, any> {
     render() {
-        let words = this.props.words.map(word => <DocumentWord key={word.recipe_document_word_id} word={word}/>);
+        let words = interleaveSpaces(this.props.words);
         return (
             <li>{words}</li>
         )
@@ -226,7 +248,7 @@ class ListItem extends React.Component<ITagProperties, any> {
 
 class Paragraph extends React.Component<ITagProperties, any> {
     render() {
-        let words = this.props.words.map(word => <DocumentWord key={word.recipe_document_word_id} word={word}/>);
+        let words = interleaveSpaces(this.props.words);
         return (
             <p>{words}</p>
         )
@@ -235,7 +257,7 @@ class Paragraph extends React.Component<ITagProperties, any> {
 
 class Heading1 extends React.Component<ITagProperties, any> {
     render() {
-        let words = this.props.words.map(word => <DocumentWord key={word.recipe_document_word_id} word={word}/>);
+        let words = interleaveSpaces(this.props.words);
         return (
             <h1>{words}</h1>
         )
@@ -244,7 +266,7 @@ class Heading1 extends React.Component<ITagProperties, any> {
 
 class Heading2 extends React.Component<ITagProperties, any> {
     render() {
-        let words = this.props.words.map(word => <DocumentWord key={word.recipe_document_word_id} word={word}/>);
+        let words = interleaveSpaces(this.props.words);
         return (
             <h2>{words}</h2>
         )
@@ -253,7 +275,7 @@ class Heading2 extends React.Component<ITagProperties, any> {
 
 class Heading3 extends React.Component<ITagProperties, any> {
     render() {
-        let words = this.props.words.map(word => <DocumentWord key={word.recipe_document_word_id} word={word}/>);
+        let words = interleaveSpaces(this.props.words);
         return (
             <h3>{words}</h3>
         )
@@ -262,7 +284,7 @@ class Heading3 extends React.Component<ITagProperties, any> {
 
 class Heading4 extends React.Component<ITagProperties, any> {
     render() {
-        let words = this.props.words.map(word => <DocumentWord key={word.recipe_document_word_id} word={word}/>);
+        let words = interleaveSpaces(this.props.words);
         return (
             <h4>{words}</h4>
         )
@@ -271,7 +293,7 @@ class Heading4 extends React.Component<ITagProperties, any> {
 
 class Heading5 extends React.Component<ITagProperties, any> {
     render() {
-        let words = this.props.words.map(word => <DocumentWord key={word.recipe_document_word_id} word={word}/>);
+        let words = interleaveSpaces(this.props.words);
         return (
             <h5>{words}</h5>
         )
@@ -280,7 +302,7 @@ class Heading5 extends React.Component<ITagProperties, any> {
 
 class Heading6 extends React.Component<ITagProperties, any> {
     render() {
-        let words = this.props.words.map(word => <DocumentWord key={word.recipe_document_word_id} word={word}/>);
+        let words = interleaveSpaces(this.props.words);
         return (
             <h6>{words}</h6>
         )
@@ -295,7 +317,7 @@ interface IDocumentWordProperties {
 class DocumentWord extends React.Component<IDocumentWordProperties, any> {
     render() {
         var word = this.props.word,
-            text = word.original_format ? word.original_format : " " + word.word,
+            text = word.original_format ? word.original_format : word.word,
             tags = api.crud.recipeDocumentWordTag.getTagsForWord(this.props.word),
             classes = tags.reduce((old, current) => old + " " + current.tag, "document-word");
         return (
@@ -310,19 +332,15 @@ export class TagPallet extends React.Component<any, any> {
         return () => {
             return api.crud.recipeDocumentWordTag.create(tagText, api.crud.recipeDocument.getSelectedWordIDs());
         }
-
     }
 
     render() {
         return (
-            <div>
-                <ul className="list-inline">
-                    <li><button onClick={this.addTag("ingredients-list")} className="btn">ingredients list</button></li>
-                    <li><button onClick={this.addTag("ingredient-quantity")} className="btn">ingredient quantity</button></li>
-                    <li><button onClick={this.addTag("ingredient-unit")} className="btn">ingredient unit</button></li>
-                    <li><button onClick={this.addTag("ingredient-unit")} className="btn">ingredient name</button></li>
-                    <li><button onClick={this.addTag("ingredient-preparation")} className="btn">ingredient preparation</button></li>
-                </ul>
+            <div className="btn-group" style={{position: "fixed", top: this.props.top, left: this.props.left}}>
+                <button onClick={this.addTag("ingredients-list")} className="btn btn-default">ingredients list</button>
+                <button onClick={this.addTag("ingredient-quantity")} className="btn btn-default">Quantity</button>
+                <button onClick={this.addTag("ingredient-unit")} className="btn btn-default">Unit</button>
+                <button onClick={this.addTag("ingredient-unit")} className="btn btn-default">Name</button>
             </div>
         )
     }

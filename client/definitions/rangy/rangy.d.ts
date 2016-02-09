@@ -31,6 +31,7 @@ interface RangyRange extends Range {
     equals(range:RangyRange):boolean;
     refresh():any;
     select():any;
+    nativeRange: Range;
 }
 
 interface RangySelection extends Selection {
@@ -40,6 +41,7 @@ interface RangySelection extends Selection {
     toHtml():string;
     getAllRanges():RangyRange[];
     getNativeTextRange():TextRange;
+    getRangeAt(position: number): RangyRange;
     setSingleRange(range:RangyRange):any;
     setRanges(ranges:RangyRange[]):any;
     getBookmark(containerNode:Node):any;
