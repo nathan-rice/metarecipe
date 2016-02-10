@@ -115,3 +115,16 @@ def delete_recipe_document_word_tag():
     else:
         return jsonify(deleted=deleted)
 
+
+@crud.route('/recipe_document_word_tag/by_document:<int:document_id>/by_tag:<string:tag>/', methods=["DELETE"])
+def delete_recipe_document_word_tag_by_tag(document_id, tag):
+    predicate = models.db.and_(models.RecipeDocumentWordTag.tag == tag,
+                               models.RecipeDocumentTagSet.recipe_document_id == document_id)
+    deleted = models.RecipeDocumentWordTag.query\
+        .join(models.RecipeDocumentTagSet)\
+        .filter(predicate)\
+        .delete()
+    if not deleted:
+        return abort(404)
+    else:
+        return jsonify(deleted=deleted)

@@ -373,13 +373,18 @@ export class RecipeDocumentWordTagService extends ObjectService {
         });
     }
 
-    getTagsForWord(word: RecipeDocumentWord) {
+    getTagsForWord(word: RecipeDocumentWord): Immutable.Iterable<any, RecipeDocumentWordTag> {
         var tagIsForWord = (tag: RecipeDocumentWordTag) => tag.recipe_document_word_id == word.recipe_document_word_id;
         return this.getState().get("tags").filter(tagIsForWord);
     }
 
-    getCommonTagsForWords(words: RecipeDocumentWord[]) {
-        // words.map()
+    getCommonTagsForWords(words: Immutable.Iterable<any, RecipeDocumentWord>): Immutable.Set<string> {
+        // This is a horribly inefficient way to get the common tags for words, but does it matter?
+        var getTagStrings = word => this.getTagsForWord(word).map(tag => tag.tag),
+            getCommonTags = (tags, word) => tags.intersect(getTagStrings(word)),
+            tags = getTagStrings(words.first()),
+            commonTags = words.rest().reduce(getCommonTags, Immutable.Set(tags));
+        return commonTags;
     }
 }
 

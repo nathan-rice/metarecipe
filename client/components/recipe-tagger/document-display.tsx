@@ -10,17 +10,18 @@ import jQuery = require('jquery');
 import Immutable = require('immutable');
 
 interface IDocumentListProperties {
-    documents: Immutable.List<crud.RecipeDocument>;
+    documents: Immutable.Iterable<any, crud.RecipeDocument>;
 }
 
 export class DocumentList extends React.Component<IDocumentListProperties, any> {
     render() {
-        let documents = this.props.documents.map(document => <DocumentListEntry document={document}/>);
+        let documents = this.props.documents.map(document => <DocumentListEntry key={document.recipe_document_id} document={document}/>),
+            documentList = Immutable.List(documents.values());
         return (
             <div>
                 <h3>Document List</h3>
                 <ul>
-                    {documents}
+                    {documentList}
                 </ul>
             </div>
         )
@@ -35,11 +36,13 @@ class DocumentListEntry extends React.Component<any, any> {
             };
         if (api.crud.recipeDocument.getSelectedDocumentID() == document.recipe_document_id) {
             return (
-            <li className="active">{document.title}</li>
-        )
+                <li className="active">{document.title}</li>
+            )
         } else {
             return (
-                <li><a href="#" onClick={onClick}>{document.title}</a></li>
+                <li>
+                    <a href="#" onClick={onClick}>{document.title}</a>
+                </li>
             )
         }
     }
@@ -50,7 +53,7 @@ function interleaveSpaces(words: Immutable.List<crud.RecipeDocumentWord>) {
     words.forEach(word => {
         let isNonSymbolWord = !word.original_format || word.word == '#',
             wordNeedsWhiteSpace = lastWord ? lastWord.word != '(' && isNonSymbolWord : false;
-        if  (wordNeedsWhiteSpace) {
+        if (wordNeedsWhiteSpace) {
             elements.push(' ');
         }
         elements.push(<DocumentWord key={word.recipe_document_word_id} word={word}/>);
@@ -62,7 +65,7 @@ function interleaveSpaces(words: Immutable.List<crud.RecipeDocumentWord>) {
 export class FormattedDocument extends React.Component<any, any> {
 
     constructor() {
-        this.selectWords.bind = this.selectWords.bind(this);
+        this.selectWords = this.selectWords.bind(this);
         this.state = {selectionRect: null};
         super();
     }
@@ -192,6 +195,8 @@ export class FormattedDocument extends React.Component<any, any> {
             ids = wordElements.map((i, el) => parseInt(el.id));
             api.crud.recipeDocument.setSelectedWordIDs(ids);
             this.setState({selectionRect: selection.getRangeAt(0).nativeRange.getBoundingClientRect()})
+        } else {
+            this.setState({selectionRect: null});
         }
     };
 
@@ -213,7 +218,7 @@ export class FormattedDocument extends React.Component<any, any> {
         let document = this.props.document,
             words = document ? FormattedDocument.tagWordsToMarkup(document.words) : '',
             rect = this.state.selectionRect,
-            tagPallet = rect ? <TagPallet top={rect.top} left={rect.left}/> : '';
+            tagPallet = rect ? <TagPallet top={rect.top} left={rect.right + 50}/> : '';
         return (<div>{words}{tagPallet}</div>);
     }
 }
@@ -326,7 +331,7 @@ class DocumentWord extends React.Component<IDocumentWordProperties, any> {
     }
 }
 
-export class TagPallet extends React.Component<any, any> {
+class TagPallet extends React.Component<any, any> {
 
     addTag(tagText) {
         return () => {
@@ -335,13 +340,44 @@ export class TagPallet extends React.Component<any, any> {
     }
 
     render() {
+        var selectedWords = api.crud.recipeDocument.getSelectedWords(),
+            selectedWordTags = api.crud.recipeDocumentWordTag.getCommonTagsForWords(selectedWords);
         return (
-            <div className="btn-group" style={{position: "fixed", top: this.props.top, left: this.props.left}}>
-                <button onClick={this.addTag("ingredients-list")} className="btn btn-default">ingredients list</button>
-                <button onClick={this.addTag("ingredient-quantity")} className="btn btn-default">Quantity</button>
-                <button onClick={this.addTag("ingredient-unit")} className="btn btn-default">Unit</button>
-                <button onClick={this.addTag("ingredient-unit")} className="btn btn-default">Name</button>
+            <div style={{position: "fixed", top: this.props.top, left: this.props.left}}>
+                <div className="btn-group">
+                    <button onClick={this.addTag("ingredients-list")} className="btn btn-default">ingredients list
+                    </button>
+                    <button onClick={this.addTag("ingredient-quantity")} className="btn btn-default"><u>Q</u>uantity</button>
+                    <button onClick={this.addTag("ingredient-unit")} className="btn btn-default"><u>U</u>nit</button>
+                    <button onClick={this.addTag("ingredient-unit")} className="btn btn-default"><u>N</u>ame</button>
+                </div>
+                <SelectionTagList tags={selectedWordTags}/>
             </div>
+        )
+    }
+}
+
+interface SelectionTagListProperties {
+    tags: Immutable.Iterable<any, string>;
+}
+
+class SelectionTagList extends React.Component<SelectionTagListProperties, any> {
+    render () {
+        var tags = this.props.tags.map(tag => <li><SelectionTag tag={tag}/></li>);
+        return (
+            <ul className="list-inline">{tags}</ul>
+        )
+    }
+}
+
+interface SelectionTagProperties {
+    tag: string;
+}
+
+class SelectionTag extends React.Component<SelectionTagProperties, any> {
+    render() {
+        return (
+           <span className="label label-default">{this.props.tag} <span className="glyphicon glyphicon-remove"></span></span>
         )
     }
 }

@@ -10,17 +10,12 @@ import DocumentDisplay = require('document-display')
 class BaseDemoInterface extends React.Component<any, any> {
     render() {
         var documents = this.props.documents,
-            document = documents ? documents.get(this.props.documentID) : null,
-            html = document ? document.html : '';
+            document = documents ? documents.get(this.props.documentID) : null;
         return (
             <div className="container">
                 <div className="row">
-
                     <div className="col-sm-8">
                         <DocumentDisplay.FormattedDocument document={document}/>
-                    </div>
-                    <div className="col-sm-3 col-sm-offset-6" style={{position: "fixed"}}>
-                        <DocumentDisplay.TagPallet></DocumentDisplay.TagPallet>
                     </div>
                 </div>
                 <div className="row">
