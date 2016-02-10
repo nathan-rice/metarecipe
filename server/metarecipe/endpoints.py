@@ -108,7 +108,7 @@ def delete_recipe_document_word_tag():
     tag_ids = request.get_json()
     deleted = models.RecipeDocumentWordTag.query\
         .filter(models.RecipeDocumentWordTag.recipe_document_word_tag_id.in_(tag_ids))\
-        .delete()
+        .delete(synchronize_session=False)
     models.db.session.commit()
     if not deleted:
         return abort(404)

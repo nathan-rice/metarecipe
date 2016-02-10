@@ -15,7 +15,8 @@ interface IDocumentListProperties {
 
 export class DocumentList extends React.Component<IDocumentListProperties, any> {
     render() {
-        let documents = this.props.documents.map(document => <DocumentListEntry key={document.recipe_document_id} document={document}/>),
+        let documents = this.props.documents.map(document => <DocumentListEntry key={document.recipe_document_id}
+                                                                                document={document}/>),
             documentList = Immutable.List(documents.values());
         return (
             <div>
@@ -203,7 +204,6 @@ export class FormattedDocument extends React.Component<any, any> {
     componentDidMount() {
         this.getWords();
         this.getTags();
-        document.onmouseup = this.selectWords;
     }
 
     componentDidUpdate(oldProps) {
@@ -219,7 +219,7 @@ export class FormattedDocument extends React.Component<any, any> {
             words = document ? FormattedDocument.tagWordsToMarkup(document.words) : '',
             rect = this.state.selectionRect,
             tagPallet = rect ? <TagPallet top={rect.top} left={rect.right + 50}/> : '';
-        return (<div>{words}{tagPallet}</div>);
+        return (<div onMouseUp={this.selectWords}>{words}{tagPallet}</div>);
     }
 }
 
@@ -333,6 +333,25 @@ class DocumentWord extends React.Component<IDocumentWordProperties, any> {
 
 class TagPallet extends React.Component<any, any> {
 
+    render() {
+        var selectedWords = api.crud.recipeDocument.getSelectedWords(),
+            selectedWordTags = api.crud.recipeDocumentWordTag.getCommonTagsForWords(selectedWords),
+            tagger;
+        if (selectedWordTags.contains("ingredient-list")) {
+            tagger = <IngredientListTagger/>;
+        } else if (selectedWordTags.contains("time")) {
+            tagger = <TimeTagger/>;
+        }
+        return (
+            <div style={{position: "fixed", top: this.props.top, left: this.props.left}}>
+                {tagger}
+                <SelectionTagList tags={selectedWordTags}/>
+            </div>
+        )
+    }
+}
+
+class Tagger extends React.Component<any, any> {
     addTag(tagText) {
         return () => {
             return api.crud.recipeDocumentWordTag.create(tagText, api.crud.recipeDocument.getSelectedWordIDs());
@@ -340,18 +359,33 @@ class TagPallet extends React.Component<any, any> {
     }
 
     render() {
-        var selectedWords = api.crud.recipeDocument.getSelectedWords(),
-            selectedWordTags = api.crud.recipeDocumentWordTag.getCommonTagsForWords(selectedWords);
         return (
-            <div style={{position: "fixed", top: this.props.top, left: this.props.left}}>
-                <div className="btn-group">
-                    <button onClick={this.addTag("ingredients-list")} className="btn btn-default">ingredients list
-                    </button>
-                    <button onClick={this.addTag("ingredient-quantity")} className="btn btn-default"><u>Q</u>uantity</button>
-                    <button onClick={this.addTag("ingredient-unit")} className="btn btn-default"><u>U</u>nit</button>
-                    <button onClick={this.addTag("ingredient-unit")} className="btn btn-default"><u>N</u>ame</button>
-                </div>
-                <SelectionTagList tags={selectedWordTags}/>
+            <div className="btn-group">
+                <button onClick={this.addTag("ingredients")} className="btn btn-default"><u>I</u>ngredients
+                </button>
+                <button onClick={this.addTag("directions")} className="btn btn-default"><u>D</u>irections
+                </button>
+                <button onClick={this.addTag("time")} className="btn btn-default"><u>T</u>ime
+                </button>
+                <button onClick={this.addTag("yield")} className="btn btn-default"><u>Y</u>ield
+                </button>
+            </div>
+        )
+    }
+}
+
+class IngredientListTagger extends Tagger {
+    render() {
+        return (
+            <div className="btn-group">
+                <button onClick={this.addTag("ingredients-heading")} className="btn btn-default"><u>H</u>eading
+                </button>
+                <button onClick={this.addTag("ingredient-quantity")} className="btn btn-default"><u>Q</u>uantity
+                </button>
+                <button onClick={this.addTag("ingredient-unit")} className="btn btn-default"><u>U</u>nit
+                </button>
+                <button onClick={this.addTag("ingredient-name")} className="btn btn-default"><u>N</u>ame
+                </button>
             </div>
         )
     }
@@ -361,9 +395,22 @@ interface SelectionTagListProperties {
     tags: Immutable.Iterable<any, string>;
 }
 
+class TimeTagger extends Tagger {
+    render() {
+        return (
+            <div className="btn-group">
+                <button onClick={this.addTag("preparation-time")} className="btn btn-default"><u>P</u>reparation
+                </button>
+                <button onClick={this.addTag("cooking-time")} className="btn btn-default"><u>C</u>ooking
+                </button>
+            </div>
+        )
+    }
+}
+
 class SelectionTagList extends React.Component<SelectionTagListProperties, any> {
-    render () {
-        var tags = this.props.tags.map(tag => <li><SelectionTag tag={tag}/></li>);
+    render() {
+        var tags = this.props.tags.map(tag => <SelectionTag tag={tag}/>);
         return (
             <ul className="list-inline">{tags}</ul>
         )
@@ -375,9 +422,22 @@ interface SelectionTagProperties {
 }
 
 class SelectionTag extends React.Component<SelectionTagProperties, any> {
+
+    deleteTagForWords() {
+        var selectedWords = api.crud.recipeDocument.getSelectedWords(),
+            selectedWordTags = api.crud.recipeDocumentWordTag.getTagsForWords(selectedWords);
+        api.crud.recipeDocumentWordTag.delete(selectedWordTags);
+    }
+
     render() {
         return (
-           <span className="label label-default">{this.props.tag} <span className="glyphicon glyphicon-remove"></span></span>
+            <li>
+                <span className="label label-default">{this.props.tag}
+                    <button style={{background: "none", border: "none"}}>
+                        <span onClick={this.deleteTagForWords} className="glyphicon glyphicon-remove"/>
+                    </button>
+                </span>
+            </li>
         )
     }
 }

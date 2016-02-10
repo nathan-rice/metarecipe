@@ -62,7 +62,7 @@ class ObjectService {
             case actions.update:
                 return constructor.reducers.update(state, action);
             case actions.delete:
-                return constructor.reducers.read(state, action);
+                return constructor.reducers.delete(state, action);
             default:
                 return state;
         }
@@ -297,7 +297,9 @@ export class RecipeDocumentWordTagService extends ObjectService {
     };
 
     static actions = class Actions extends ObjectService.actions {
-        static loadDocumentWordTags = "LOAD_RECIPE_DOCUMENT_WORD_TAGS"
+        static loadDocumentWordTags = "LOAD_RECIPE_DOCUMENT_WORD_TAGS";
+        static create = "CREATE_RECIPE_DOCUMENT_WORD_TAGS";
+        static delete = "DELETE_RECIPE_DOCUMENT_WORD_TAGS";
     };
 
     static defaultState:Immutable.Map<string, any> = Immutable.fromJS({
@@ -313,7 +315,7 @@ export class RecipeDocumentWordTagService extends ObjectService {
 
         static delete(state: Immutable.Map<any, any>, action): Immutable.Map<any, any> {
             let tags = state.get("tags"),
-                isNotDeletedTag = tag => action.tagIDs.indexOf(tag.recipe_document_tag_id) == -1;
+                isNotDeletedTag = (tag: RecipeDocumentWordTag) => action.tagIDs.indexOf(tag.recipe_document_word_tag_id) == -1;
             return state.set("tags", tags.filter(isNotDeletedTag));
         }
 
@@ -356,9 +358,9 @@ export class RecipeDocumentWordTagService extends ObjectService {
             actions = constructor.actions,
             tagIDs = tags.map(tag => tag.recipe_document_word_tag_id);
         return jQuery.ajax({
-            type: "POST",
+            type: "DELETE",
             url: endpoints.delete,
-            data: JSON.stringify(tags.toJS()),
+            data: JSON.stringify(tagIDs.toJS()),
             contentType: "application/json; charset=utf-8",
             success: () => this.store.dispatch({type: actions.delete, tagIDs: tagIDs})
         });
@@ -376,6 +378,11 @@ export class RecipeDocumentWordTagService extends ObjectService {
     getTagsForWord(word: RecipeDocumentWord): Immutable.Iterable<any, RecipeDocumentWordTag> {
         var tagIsForWord = (tag: RecipeDocumentWordTag) => tag.recipe_document_word_id == word.recipe_document_word_id;
         return this.getState().get("tags").filter(tagIsForWord);
+    }
+
+    getTagsForWords(words: Immutable.Iterable<any, RecipeDocumentWord>): Immutable.Iterable<any, RecipeDocumentWordTag> {
+        var concatTags = (tags, word) => tags.concat(this.getTagsForWord(word));
+        return words.reduce(concatTags, Immutable.List())
     }
 
     getCommonTagsForWords(words: Immutable.Iterable<any, RecipeDocumentWord>): Immutable.Set<string> {
