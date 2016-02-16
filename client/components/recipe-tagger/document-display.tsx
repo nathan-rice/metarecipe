@@ -204,6 +204,11 @@ export class FormattedDocument extends React.Component<any, any> {
     componentDidMount() {
         this.getWords();
         this.getTags();
+        jQuery(document).on("mouseup", this.selectWords);
+    }
+
+    componentWillUnmount() {
+        jQuery(document).off("mouseup")
     }
 
     componentDidUpdate(oldProps) {
@@ -337,10 +342,12 @@ class TagPallet extends React.Component<any, any> {
         var selectedWords = api.crud.recipeDocument.getSelectedWords(),
             selectedWordTags = api.crud.recipeDocumentWordTag.getCommonTagsForWords(selectedWords),
             tagger;
-        if (selectedWordTags.contains("ingredient-list")) {
+        if (selectedWordTags.contains("ingredients-list")) {
             tagger = <IngredientListTagger/>;
         } else if (selectedWordTags.contains("time")) {
             tagger = <TimeTagger/>;
+        } else {
+            tagger = <Tagger/>;
         }
         return (
             <div style={{position: "fixed", top: this.props.top, left: this.props.left}}>
@@ -358,16 +365,47 @@ class Tagger extends React.Component<any, any> {
         }
     }
 
+    handleKeyPress(e) {
+        var addTag = tag => api.crud.recipeDocumentWordTag.create(tag, api.crud.recipeDocument.getSelectedWordIDs());
+        switch (e.keyCode) {
+            case 84:
+                addTag("title");
+                break;
+            case 73:
+                addTag("ingredients");
+                break;
+            case 68:
+                addTag("directions");
+                break;
+            case 77:
+                addTag("time");
+                break;
+            case 89:
+                addTag("yield");
+                break;
+        }
+    }
+
+    componentDidMount() {
+        jQuery(document).on("keyup", this.handleKeyPress);
+    }
+
+    componentWillUnmount() {
+        jQuery(document).off("keyup");
+    }
+
     render() {
         return (
-            <div className="btn-group">
-                <button onClick={this.addTag("ingredients")} className="btn btn-default"><u>I</u>ngredients
+            <div className="btn-group" onKeyPress={this.handleKeyPress}>
+                <button onClick={this.addTag("title")} className="btn btn-default btn-small"><u>T</u>itle
                 </button>
-                <button onClick={this.addTag("directions")} className="btn btn-default"><u>D</u>irections
+                <button onClick={this.addTag("ingredients")} className="btn btn-default btn-small"><u>I</u>ngredients
                 </button>
-                <button onClick={this.addTag("time")} className="btn btn-default"><u>T</u>ime
+                <button onClick={this.addTag("directions")} className="btn btn-default btn-small"><u>D</u>irections
                 </button>
-                <button onClick={this.addTag("yield")} className="btn btn-default"><u>Y</u>ield
+                <button onClick={this.addTag("time")} className="btn btn-default btn-small">Ti<u>m</u>e
+                </button>
+                <button onClick={this.addTag("yield")} className="btn btn-default btn-small"><u>Y</u>ield
                 </button>
             </div>
         )
@@ -375,16 +413,40 @@ class Tagger extends React.Component<any, any> {
 }
 
 class IngredientListTagger extends Tagger {
+
+    handleKeyPress(e) {
+        var addTag = tag => api.crud.recipeDocumentWordTag.create(tag, api.crud.recipeDocument.getSelectedWordIDs());
+        switch (e.key) {
+            case 72:
+                addTag("ingredients-heading");
+                break;
+            case 81:
+                addTag("ingredient-quantity");
+                break;
+            case 85:
+                addTag("ingredient-unit");
+                break;
+            case 78:
+                addTag("ingredient-name");
+                break;
+            case 80:
+                addTag("ingredient-preparation");
+                break;
+        }
+    }
+
     render() {
         return (
             <div className="btn-group">
-                <button onClick={this.addTag("ingredients-heading")} className="btn btn-default"><u>H</u>eading
+                <button onClick={this.addTag("ingredients-heading")} className="btn btn-default btn-small"><u>H</u>eading
                 </button>
-                <button onClick={this.addTag("ingredient-quantity")} className="btn btn-default"><u>Q</u>uantity
+                <button onClick={this.addTag("ingredient-quantity")} className="btn btn-default btn-small"><u>Q</u>uantity
                 </button>
-                <button onClick={this.addTag("ingredient-unit")} className="btn btn-default"><u>U</u>nit
+                <button onClick={this.addTag("ingredient-unit")} className="btn btn-default btn-small"><u>U</u>nit
                 </button>
-                <button onClick={this.addTag("ingredient-name")} className="btn btn-default"><u>N</u>ame
+                <button onClick={this.addTag("ingredient-name")} className="btn btn-default btn-small"><u>N</u>ame
+                </button>
+                <button onClick={this.addTag("ingredient-preparation")} className="btn btn-default btn-small"><u>P</u>reparation
                 </button>
             </div>
         )
@@ -396,12 +458,54 @@ interface SelectionTagListProperties {
 }
 
 class TimeTagger extends Tagger {
+    
+    handleKeyPress(e) {
+        var addTag = tag => api.crud.recipeDocumentWordTag.create(tag, api.crud.recipeDocument.getSelectedWordIDs());
+        switch (e.key) {
+            case 80:
+                addTag("preparation-time");
+                break;
+            case 67:
+                addTag("cooking-time");
+                break;
+            case 84:
+                addTag("total-time");
+                break;
+        }
+    }
+    
     render() {
         return (
             <div className="btn-group">
-                <button onClick={this.addTag("preparation-time")} className="btn btn-default"><u>P</u>reparation
+                <button onClick={this.addTag("preparation-time")} className="btn btn-default btn-small"><u>P</u>reparation
                 </button>
-                <button onClick={this.addTag("cooking-time")} className="btn btn-default"><u>C</u>ooking
+                <button onClick={this.addTag("cooking-time")} className="btn btn-default btn-small"><u>C</u>ooking
+                </button>
+                <button onClick={this.addTag("total-time")} className="btn btn-default btn-small"><u>T</u>otal
+                </button>
+            </div>
+        )
+    }
+}
+
+class TimeSubTagger extends Tagger {
+    
+    handleKeyPress(e) {
+        var addTag = tag => api.crud.recipeDocumentWordTag.create(tag, api.crud.recipeDocument.getSelectedWordIDs());
+        switch (e.key) {
+            case 80:
+                addTag("time-label");
+                break;
+            case 67:
+                addTag("time-value");
+                break;
+        }
+    }
+    
+    render() {
+        return (
+            <div className="btn-group">
+                <button onClick={this.addTag("time-value")} className="btn btn-default btn-small"><u>V</u>alue
                 </button>
             </div>
         )
@@ -430,9 +534,10 @@ class SelectionTag extends React.Component<SelectionTagProperties, any> {
     }
 
     render() {
+        var tagClass = "label label-default " + this.props.tag; 
         return (
             <li>
-                <span className="label label-default">{this.props.tag}
+                <span className={tagClass}>{this.props.tag}
                     <button style={{background: "none", border: "none"}}>
                         <span onClick={this.deleteTagForWords} className="glyphicon glyphicon-remove"/>
                     </button>

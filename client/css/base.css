@@ -7,9 +7,25 @@
 }
 
 .ingredients-list.ingredient-unit, .ingredient-unit {
-    background-color: gold;
+    background-color: gold !important;
 }
 
 .ingredients-list.ingredient-preparation, .ingredient-preparation {
     background-color: lightpink;
+}
+
+.time {
+
+}
+
+.time.preparation-time .preparation-time {
+
+}
+
+.time.cooking-time .cooking-time {
+
+}
+
+.time.total-time .total-time {
+
 }
