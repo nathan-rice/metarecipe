@@ -253,7 +253,6 @@ class Ingredient(db.Model):
     c18_n2_undifferentiated = db.Column(db.Float)
     c18_n3_undifferentiated = db.Column(db.Float)
     c20_n4_undifferentiated = db.Column(db.Float)
-    c18_n1_undifferentiated = db.Column(db.Float)
     docosahexaenoic_acid = db.Column(db.Float)
     behenic_acid = db.Column(db.Float)
     myristoleic_acid = db.Column(db.Float)
@@ -270,7 +269,24 @@ class Ingredient(db.Model):
     sigmasterol = db.Column(db.Float)
     camesterol = db.Column(db.Float)
     beta_sitosterol = db.Column(db.Float)
-
+    c18_n2_trans_not_further_defined = db.Column(db.Float)
+    trans_monoenolic_fatty_acids = db.Column(db.Float)
+    trans_polyenolic_fatty_acids = db.Column(db.Float)
+    tridecyclic_acid = db.Column(db.Float)
+    c16_n1_trans = db.Column(db.Float)
+    c18_n1_trans = db.Column(db.Float)
+    c22_n1_trans = db.Column(db.Float)
+    c18_n2_trans_trans = db.Column(db.Float)
+    c18_n2_cla = db.Column(db.Float)
+    nervonic_acid = db.Column(db.Float)  # 24:1 cis
+    alpha_linoleic_acid = db.Column(db.Float)  # 18:3 omega-3 cis,cis,cis
+    eicosatrienoic_acid = db.Column(db.Float)  # 20:3 omega-3
+    dihomo_gamma_linolenic_acid = db.Column(db.Float)  # 20:3 omega-6
+    arachidonic_acid = db.Column(db.Float)  # 20:4 omega-6
+    c18_n3_i = db.Column(db.Float)
+    heneicosapentaenoic_acid = db.Column(db.Float)  # 20:5 omega-3
+    adrenic_acid = db.Column(db.Float)  # 22:4 omega-6
+    vaccenic_acid = db.Column(db.Float)  # 18:1 trans omega-7
 
 
 
