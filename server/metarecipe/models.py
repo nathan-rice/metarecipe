@@ -289,10 +289,6 @@ class Ingredient(db.Model):
     vaccenic_acid = db.Column(db.Float)  # 18:1 trans omega-7
 
 
-
-
-
-
 class RecipeIngredient(db.Model):
     __tablename__ = "recipe_ingredient"
     recipe_ingredient_id = db.Column(db.Integer, primary_key=True)
