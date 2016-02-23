@@ -1,9 +1,9 @@
 import datetime
-
 import re
+from fractions import Fraction
 import lxml.html
 from collections import defaultdict, namedtuple
-from itertools import count
+from itertools import count, groupby
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -93,6 +93,22 @@ class RecipeDocumentTagSet(db.Model):
     recipe_document_id = db.Column(db.Integer, db.ForeignKey(RecipeDocument.recipe_document_id))
     recipe_document = db.relationship(RecipeDocument, backref="tag_sets")
 
+    @property
+    def grouped(self):
+        last_element_position = -1
+        elements = [[]]
+        word_tags = defaultdict(lambda: set())
+        for tag in self.tags:
+            word_tags[tag.word].add(tag.tag)
+        for word in sorted(word_tags):
+            if word.element_position <= last_element_position:
+                elements.append([])
+            elements[-1].append(word)
+            last_element_position = word.element_position
+        TaggedWordGroup = namedtuple("TaggedWordGroup", ["tags", "words"])
+        return [[TaggedWordGroup(key, tuple(group)) for key, group in
+                 groupby(element, lambda word: frozenset(word_tags[word])) if key] for element in elements]
+
 
 class RecipeDocumentWord(db.Model):
     __tablename__ = "recipe_document_word"
@@ -106,6 +122,14 @@ class RecipeDocumentWord(db.Model):
     recipe_document_id = db.Column(db.Integer, db.ForeignKey(RecipeDocument.recipe_document_id))
     recipe_document = db.relationship(RecipeDocument, backref="words")
 
+    _number_re = re.compile(r"(\d+\s*/\s*\d+|\d*\.\d+|\d+)")
+
+    def __hash__(self):
+        return self.recipe_document_word_id
+
+    def __lt__(self, other):
+        return self.document_position < other.document_position
+
     @property
     def as_dict(self):
         return {
@@ -117,6 +141,11 @@ class RecipeDocumentWord(db.Model):
             "original_format": self.original_format
         }
 
+    @property
+    def as_number(self):
+        number_strings = self._number_re.findall(self.original_format)
+        return float(sum(Fraction(re.sub(r"\s+", "", s)) for s in number_strings))
+
 
 class RecipeDocumentWordTag(db.Model):
     __tablename__ = "recipe_document_word_tag"
@@ -124,7 +153,7 @@ class RecipeDocumentWordTag(db.Model):
     tag = db.Column(db.Unicode)
 
     recipe_document_word_id = db.Column(db.Integer, db.ForeignKey(RecipeDocumentWord.recipe_document_word_id))
-    word = db.relationship(RecipeDocumentWord, backref="tags")
+    word = db.relationship(RecipeDocumentWord)
 
     recipe_document_tag_set_id = db.Column(db.Integer, db.ForeignKey(RecipeDocumentTagSet.recipe_document_tagset_id))
     tag_set = db.relationship(RecipeDocumentTagSet, backref="tags")
@@ -146,6 +175,7 @@ class Recipe(db.Model):
     other_time = db.Column(db.Time)
     # Do we want to rely on the total time value from page?  For now we will, can always remove it later
     total_time = db.Column(db.Time)
+    title = db.Column(db.Unicode)
 
 
 class Ingredient(db.Model):
@@ -156,28 +186,41 @@ class Ingredient(db.Model):
     culinary_history = db.Column(db.Text)
 
 
-class IngredientPreparation(db.Model):
+class IngredientName(db.Model):
+    __tablename__ = "ingredient_name"
+    ingredient_name_id = db.Column(db.Integer, primary_key=True)
+    ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredient.ingredient_id"))
+    name = db.Column(db.Unicode)
+    canonical = db.Column(db.Boolean)
+    creator = db.Column(db.Integer)
+    ingredient = db.relationship(Ingredient, backref="names")
+
+
+class IngredientMeasure(db.Model):
     __tablename__ = "ingredient_preparation"
     ingredient_preparation_id = db.Column(db.Integer, primary_key=True)
     ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredient.ingredient_id"))
     description = db.Column(db.Unicode)
+    amount = db.Column(db.Float)
+    weight = db.Column(db.Float)
     density = db.Column(db.Float)
 
 
 class Nutrient(db.Model):
     __tablename__ = "nutrient"
-    usda_nutrient_id = db.Column(db.Integer, primary_key=True)
+    nutrient_id = db.Column(db.Integer, primary_key=True)
     display_name = db.Column(db.Unicode)
     scientific_name = db.Column(db.Unicode)
     measurement_unit = db.Column(db.Unicode)
     recommended_daily_intake = db.Column(db.Float)
     about = db.Column(db.Unicode)
+    display = db.Column(db.Boolean)
 
 
 class IngredientNutrient(db.Model):
     __tablename__ = "ingredient_nutrient"
     ingredient_nutrient_id = db.Column(db.Integer, primary_key=True)
-    usda_nutrient_id = db.Column(db.Integer, db.ForeignKey("nutrient.usda_nutrient_id"))
+    nutrient_id = db.Column(db.Integer, db.ForeignKey("nutrient.nutrient_id"))
     ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredient.ingredient_id"))
     quantity = db.Column(db.Float)
 
@@ -186,11 +229,9 @@ class RecipeIngredient(db.Model):
     __tablename__ = "recipe_ingredient"
     recipe_ingredient_id = db.Column(db.Integer, primary_key=True)
 
-    recipe_component = db.Column(db.Text)  # for recipes with multiple "parts"
-
-    recipe_quantity = db.Column(db.Float)
-    recipe_quantity_units = db.Column(db.Text)
-
+    component = db.Column(db.Text)  # for recipes with multiple "parts"
+    quantity = db.Column(db.Float)
+    units = db.Column(db.Text)
     ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredient.ingredient_id"))
     ingredient = db.relationship(Ingredient, backref="recipe_instances")
     ingredient_form = db.Column(db.Text)  # this might want to become its own entity

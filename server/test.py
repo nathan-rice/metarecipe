@@ -3,7 +3,7 @@ from metarecipe.app import app, db
 
 if __name__ == "__main__":
     with app.test_request_context():
-        whole_wheat_pancakes_recipe = m.RecipeDocument.query.filter(m.RecipeDocument.recipe_document_id == 32).first()
-        whole_wheat_pancakes_recipe.words = m.RecipeDocument.get_document_words(whole_wheat_pancakes_recipe.html)
-        db.session.commit()
+        db.metadata.drop_all()
+        db.metadata.create_all()
+        # m.Ingredient.query.order_by(db.desc(db.func.similarity("chicken", m.Ingredient.ingredient_name))).limit(10).all()
 

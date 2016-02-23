@@ -395,6 +395,38 @@ export class RecipeDocumentWordTagService extends ObjectService {
     }
 }
 
+export class RecipeDocumentTagSetService extends ObjectService {
+    static actions = class Action extends ObjectService.actions {
+
+    };
+
+    static endpoints = class Endpoints extends ObjectService.endpoints {
+
+    };
+
+    static reducers = class Reducers extends ObjectService.reducers {
+
+    };
+
+    static defaultState = Immutable.fromJS({});
+}
+
+export class RecipeService extends ObjectService {
+    static actions = class Action extends ObjectService.actions {
+
+    };
+
+    static endpoints = class Endpoints extends ObjectService.endpoints {
+
+    };
+
+    static reducers = class Reducers extends ObjectService.reducers {
+
+    };
+
+    static defaultState = Immutable.fromJS({});
+}
+
 export class ObjectManager {
 
     recipeDocument: RecipeDocumentService;

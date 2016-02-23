@@ -442,7 +442,7 @@ class IngredientListTagger extends Tagger {
                 </button>
                 <button onClick={this.addTag("ingredient-quantity")} className="btn btn-default btn-small"><u>Q</u>uantity
                 </button>
-                <button onClick={this.addTag("ingredient-unit")} className="btn btn-default btn-small"><u>U</u>nit
+                <button onClick={this.addTag("ingredient-units")} className="btn btn-default btn-small"><u>U</u>nit
                 </button>
                 <button onClick={this.addTag("ingredient-name")} className="btn btn-default btn-small"><u>N</u>ame
                 </button>

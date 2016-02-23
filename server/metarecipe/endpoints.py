@@ -1,3 +1,4 @@
+from itertools import groupby
 from flask import Blueprint, request, jsonify, abort
 
 from . import search
@@ -8,6 +9,7 @@ recipe_search = Blueprint('recipe_search', __name__)
 
 crud = Blueprint('crud', __name__)
 
+recipe_creation = Blueprint('recipe_creation', __name__)
 
 @recipe_search.route('/site/food_network/')
 def food_network():
@@ -128,3 +130,50 @@ def delete_recipe_document_word_tag_by_tag(document_id, tag):
         return abort(404)
     else:
         return jsonify(deleted=deleted)
+
+
+@recipe_creation.route('/tagset/<int:tagset_id>/')
+def recipe_from_tagset(tagset_id):
+    tagset = models.RecipeDocumentTagSet.query\
+        .filter(models.RecipeDocumentTagSet.recipe_document_tagset_id == tagset_id)\
+        .first()
+    recipe = {"ingredients": [], "directions": []}
+    current_recipe_component = None
+    current_ingredient = {}
+    # First we need to group words by their tags
+    for element in tagset.groups:
+        for tag_group in element:
+            if "title" in tag_group.tags:
+                recipe["title"] = " ".join(tag_group.words)
+            elif "ingredients-heading" in tag_group.tags:
+                current_recipe_component = " ".join(tag_group.words)
+            elif "ingredient-name" in tag_group.tags:
+                current_ingredient["name"] = " ".join(tag_group.words)
+            elif "ingredient-quantity" in tag_group.tags:
+                current_ingredient["quantity"] = tag_group.words[0].as_number
+            elif "ingredient-units" in tag_group.tags:
+                current_ingredient["units"] = tag_group.words[0]
+            elif "ingredient-preparation" in tag_group.tags:
+                current_ingredient["preparation"] = " ".join(tag_group.words)
+            elif "directions" in tag_group.tags:
+                current_step = []
+                last_word = None
+                # We need to split the directions into discrete steps, based on sentences.
+                for word in tag_group.words:
+                    is_non_symbol_word = not word.original_format or word.word == "#"
+                    if last_word and not last_word.word == '(' and is_non_symbol_word:
+                        current_step.append(" ")
+                    recipe["directions"].append(word.original_format or word.word)
+                    last_word = word
+                    if word.word == '.':
+                        recipe["directions"].append("".join(current_step))
+                        current_step = []
+                # Check to see if a sentence was left unterminated, and if so, include it
+                if current_step:
+                    recipe["directions"].append("".join(current_step))
+        if current_ingredient:
+            if current_recipe_component:
+                current_ingredient["component"] = current_recipe_component
+            recipe["ingredients"].append(current_ingredient)
+    return recipe
+
