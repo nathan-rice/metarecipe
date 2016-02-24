@@ -195,6 +195,14 @@ class IngredientName(db.Model):
     creator = db.Column(db.Integer)
     ingredient = db.relationship(Ingredient, backref="names")
 
+    @property
+    def as_dict(self):
+        return {
+            "ingredient_name_id": self.ingredient_name_id,
+            "ingredient_id": self.ingredient_id,
+            "name": self.name
+        }
+
 
 class IngredientMeasure(db.Model):
     __tablename__ = "ingredient_preparation"

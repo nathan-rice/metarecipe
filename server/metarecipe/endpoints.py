@@ -132,23 +132,30 @@ def delete_recipe_document_word_tag_by_tag(document_id, tag):
         return jsonify(deleted=deleted)
 
 
-@recipe_creation.route('/tagset/<int:tagset_id>/')
-def recipe_from_tagset(tagset_id):
-    tagset = models.RecipeDocumentTagSet.query\
-        .filter(models.RecipeDocumentTagSet.recipe_document_tagset_id == tagset_id)\
+@recipe_creation.route('/tag_set/<int:tag_set_id>/')
+def recipe_from_tag_set(tag_set_id):
+    tag_set = models.RecipeDocumentTagSet.query\
+        .filter(models.RecipeDocumentTagSet.recipe_document_tagset_id == tag_set_id)\
         .first()
     recipe = {"ingredients": [], "directions": []}
     current_recipe_component = None
     current_ingredient = {}
     # First we need to group words by their tags
-    for element in tagset.groups:
+    for element in tag_set.groups:
         for tag_group in element:
             if "title" in tag_group.tags:
                 recipe["title"] = " ".join(tag_group.words)
             elif "ingredients-heading" in tag_group.tags:
                 current_recipe_component = " ".join(tag_group.words)
             elif "ingredient-name" in tag_group.tags:
-                current_ingredient["name"] = " ".join(tag_group.words)
+                ingredient_name = " ".join(tag_group.words)
+                name_similarity = models.db.func.similarity(models.IngredientName.name, ingredient_name)
+                matching_ingredients = models.IngredientName.query\
+                    .filter(models.db.desc(name_similarity))\
+                    .limit(10)\
+                    .all()
+                current_ingredient["ingredient_name"] = ingredient_name
+                current_ingredient["matching_ingredients"] = [name.as_dict for name in matching_ingredients]
             elif "ingredient-quantity" in tag_group.tags:
                 current_ingredient["quantity"] = tag_group.words[0].as_number
             elif "ingredient-units" in tag_group.tags:
