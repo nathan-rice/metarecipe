@@ -15,19 +15,22 @@ interface IEndpoint {
     url: string;
     method?: string;
     arguments?: IEndpointArgumentContainer;
+    headers?: string[];
     body?: IEndpointBodyInput;
 }
 
 class Endpoint implements IEndpoint {
-    arguments: IEndpointArgumentContainer;
     url: string;
     method: string = "GET";
+    arguments: IEndpointArgumentContainer;
+    headers: string[];
     body: IEndpointBodyInput;
 
     constructor(config: IEndpoint) {
         if (config.method) this.method = config.method;
         if (config.arguments) this.arguments = config.arguments;
         if (config.body) this.body = config.body;
+        if (config.headers) this.headers = config.headers;
     }
 }
 
@@ -41,17 +44,21 @@ interface IAction {
     getState?: Function;
 }
 
-abstract class Action implements IAction {
+class ComposableComponent {
+    name: string;
+    description: string;
+    parent: ApiComponent;
+    defaultState: Object;
+    getState: Function = () => this.parent ? this.parent.getState()[this.parent.stateLocation(this)] : null;
+}
+
+class Action extends ComposableComponent implements IAction {
     endpoint: string | Function;
     initiator: Function;
     reducer: Function | Function[];
-    name: string;
-    description: string;
-    defaultState: Object;
-    getState: Function;
-    parent: ApiComponent;
 
     constructor(config: IAction) {
+        super();
         if (config.endpoint) this.endpoint = config.endpoint;
         if (config.reducer) this.reducer = config.reducer;
         if (config.description) this.description = config.description;
@@ -61,10 +68,10 @@ abstract class Action implements IAction {
         this.defaultState = config.defaultState;
     }
 
-    reduce(state, action) {
+    reduce: Function = (state, action) => {
         if (!state) {
             return this.defaultState;
-        } else if (action.type != this.name) {
+        } else if (action.type != this.name || !this.reducer) {
             return state;
         } else {
             if (this.reducer instanceof Function) {
@@ -77,36 +84,58 @@ abstract class Action implements IAction {
 }
 
 interface IComponentContainer {
-    (key: string): Action | ApiComponent;
+    (key: string): ComposableComponent;
 }
 
-abstract class ApiComponent {
-    private subComponents: IComponentContainer | Object = {};
-    name: string;
-    description: string;
-    parent: ApiComponent;
+class ApiComponent extends ComposableComponent {
+    components: IComponentContainer | Object = {};
+    private _stateLocation = {};
 
-    mount(location: string, subComponent: Action | ApiComponent) {
-        this.subComponents[location] = subComponent;
-        if (subComponent instanceof Action) {
-            this[location] = subComponent.initiator;
+    mount(location: string, component: ComposableComponent, stateLocation?: string) {
+        this.components[location] = component;
+        this.defaultState[location] = component.defaultState;
+        if (stateLocation) {
+            this._stateLocation[location] = stateLocation;
+        }
+        component.parent = this;
+        if (component instanceof Action) {
+            this[location] = component.initiator;
         } else {
-            this[location] = subComponent;
+            this[location] = component;
         }
         return this;
     }
 
     unmount(location: string) {
-        delete this.subComponents[location];
+        delete this.components[location].parent;
+        delete this.components[location];
+        delete this.defaultState[location];
         delete this[location];
         return this;
     }
 
-    reduce(state, action) {
-        var newState = {};
-        for (let component in this.subComponents) {
-            newState[component] = this.subComponents[component].reduce(state[component], action);
+    mountLocation(component: ComposableComponent) {
+        for (let location in this.components) {
+            if (component == this.components[location]) return location;
         }
-        return newState;
+        return null;
+    }
+
+    stateLocation(component: ComposableComponent) {
+        var mountLocation = this.mountLocation(component);
+        return this._stateLocation[mountLocation] || mountLocation;
+    }
+
+    reduce(state, action) {
+        if (!state) return this.defaultState;
+        else {
+            // applying to a new object here to retain state set by actions with a non-standard getState
+            let newState = Object.apply({}, state), location, stateLocation;
+            for (location in this.components) {
+                stateLocation = this._stateLocation[location] || location;
+                newState[stateLocation] = this.components[location].reduce(state[stateLocation], action);
+            }
+            return newState;
+        }
     }
 }
