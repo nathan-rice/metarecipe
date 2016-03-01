@@ -5409,7 +5409,7 @@ StatelessComponent.prototype.render = function () {
  *     - [children's componentDidMount]
  *     - componentDidMount
  *
- *       Update Phases:
+ *       Search Phases:
  *       - componentWillReceiveProps (only called if parent updated)
  *       - shouldComponentUpdate
  *         - componentWillUpdate
@@ -7006,7 +7006,7 @@ ReactDOMComponent.Mixin = {
               styleUpdates[styleName] = '';
             }
           }
-          // Update styles that changed since `lastProp`.
+          // Search styles that changed since `lastProp`.
           for (styleName in nextProp) {
             if (nextProp.hasOwnProperty(styleName) && lastProp[styleName] !== nextProp[styleName]) {
               styleUpdates = styleUpdates || {};
@@ -11814,7 +11814,7 @@ var ReactMultiChild = {
           prevChild._mountIndex = nextIndex;
         } else {
           if (prevChild) {
-            // Update `lastIndex` before `_mountIndex` gets unset by unmounting.
+            // Search `lastIndex` before `_mountIndex` gets unset by unmounting.
             lastIndex = Math.max(prevChild._mountIndex, lastIndex);
             this._unmountChild(prevChild);
           }
@@ -12987,7 +12987,7 @@ var ReactReconciler = {
   },
 
   /**
-   * Update a component using a new element.
+   * Search a component using a new element.
    *
    * @param {ReactComponent} internalInstance
    * @param {ReactElement} nextElement

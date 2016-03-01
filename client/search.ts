@@ -33,7 +33,7 @@ class RecipeSearchReducer {
     }
 
     static toggleRetrieve(state, action) {
-        return state.updateIn(["retrieve", action.recipe.url], val => !val);
+
     }
 
     static retrieveAll(state, action) {

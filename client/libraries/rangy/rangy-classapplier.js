@@ -845,7 +845,7 @@
                     removePreservingPositions(node, positionsToPreserve);
                 });
 
-                // Update the range from the preserved boundary positions
+                // Search the range from the preserved boundary positions
                 updateRangesFromBoundaries(rangesToPreserve, positionsToPreserve);
             },
 
@@ -915,7 +915,7 @@
                         applier.postApply(textNodes, range, positionsToPreserve, false);
                     }
 
-                    // Update the ranges from the preserved boundary positions
+                    // Search the ranges from the preserved boundary positions
                     updateRangesFromBoundaries(rangesToPreserve, positionsToPreserve);
                 }
 
@@ -979,7 +979,7 @@
                         applier.postApply(textNodes, range, positionsToPreserve, true);
                     }
 
-                    // Update the ranges from the preserved boundary positions
+                    // Search the ranges from the preserved boundary positions
                     updateRangesFromBoundaries(rangesToPreserve, positionsToPreserve);
                 }
 

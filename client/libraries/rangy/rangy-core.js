@@ -3092,7 +3092,7 @@
         }
 
         function updateControlSelection(sel) {
-            // Update the wrapped selection based on what's now in the native selection
+            // Search the wrapped selection based on what's now in the native selection
             sel._ranges.length = 0;
             if (sel.docSelection.type == "None") {
                 updateEmptySelection(sel);
@@ -3135,7 +3135,7 @@
             }
             newControlRange.select();
 
-            // Update the wrapped selection based on what's now in the native selection
+            // Search the wrapped selection based on what's now in the native selection
             updateControlSelection(sel);
         }
 
@@ -3250,7 +3250,7 @@
             }
             controlRange.select();
 
-            // Update the wrapped selection based on what's now in the native selection
+            // Search the wrapped selection based on what's now in the native selection
             updateControlSelection(sel);
         }
 
@@ -3520,7 +3520,7 @@
                     }
                     newControlRange.select();
 
-                    // Update the wrapped selection based on what's now in the native selection
+                    // Search the wrapped selection based on what's now in the native selection
                     updateControlSelection(this);
                 } else {
                     removeRangeManually(this, range);
