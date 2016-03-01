@@ -1,5 +1,9 @@
 /// <reference path="definitions/redux/redux.d.ts" />
 
+interface IReduxAction {
+    type: string;
+}
+
 interface IEndpointInput {
     description?: string;
     converter?: (argumentValue) => string;
@@ -40,17 +44,17 @@ class Endpoint implements IEndpoint {
 }
 
 interface IAction {
-    endpoint?: string | Function;
+    endpoint?: Endpoint;
     initiator: Function;
-    reducer?: Function | Function[];
-    name: string;
+    reducer?: ((state, action: IReduxAction) => Object) | ((state, action: IReduxAction) => Object)[];
+    name?: string;
     description?: string;
-    defaultState: Object;
+    defaultState?: Object;
     getState?: Function;
 }
 
 interface IApiComponent {
-    name: string;
+    name?: string;
     description?: string;
     parent?: Namespace;
     defaultState?: Object;
@@ -64,7 +68,15 @@ class ApiComponent {
     parent: Namespace;
     defaultState: Object;
     store: Redux.Store;
-    getState: Function = () => this.parent ? this.parent.getState()[this.parent.stateLocation(this)] : null;
+    getState: Function = () => {
+        if (!this.parent) return null;
+        else return this._get(this.parent.getState(), this.parent.stateLocation(this));
+    };
+
+    protected _get(state, location) {
+        if (location) return state[location];
+        else return state;
+    }
 
     constructor(config: IApiComponent) {
         if (config.description) this.description = config.description;
@@ -72,7 +84,7 @@ class ApiComponent {
         if (config.getState) this.getState = config.getState;
         if (config.store) this.store = config.store;
         if (config.defaultState) this.defaultState = config.defaultState;
-        this.name = config.name;
+        if (config.name) this.name = config.name;
     }
 
     getStore(): Redux.Store {
@@ -82,15 +94,20 @@ class ApiComponent {
 }
 
 class Action extends ApiComponent implements IAction {
-    endpoint: string | Function;
+    endpoint: Endpoint;
     initiator: Function = (action: Action) => action.getStore().dispatch({type: action.name});
-    reducer: Function | Function[];
+    reducer: ((state, action: IReduxAction) => Object) | ((state, action: IReduxAction) => Object)[];
 
-    constructor(config: IAction) {
+    constructor(config: IAction | Function) {
         super(config);
-        if (config.endpoint) this.endpoint = config.endpoint;
-        if (config.reducer) this.reducer = config.reducer;
-        this.initiator = config.initiator;
+        if (config instanceof Function) {
+            this.initiator = config;
+        }
+        else {
+            if ((config as IAction).endpoint) this.endpoint = (config as IAction).endpoint;
+            if ((config as IAction).reducer) this.reducer = (config as IAction).reducer;
+            this.initiator = (config as IAction).initiator;
+        }
     }
 
     reduce: Function = (state, action) => {
@@ -100,9 +117,9 @@ class Action extends ApiComponent implements IAction {
             return state;
         } else {
             if (this.reducer instanceof Function) {
-                return (this.reducer as Function)(state, action);
+                return (this.reducer as (state, action: IReduxAction) => Object)(state, action);
             } else {
-                return (this.reducer as Function[]).reduce((s, f) => f(s, action), state);
+                return (this.reducer as ((state, action: IReduxAction) => Object)[]).reduce((s, f) => f(s, action), state);
             }
         }
     }
@@ -113,7 +130,7 @@ interface IComponentContainer {
 }
 
 interface INamespaceConfiguration extends IApiComponent {
-    components?: IComponentMountConfiguration[];
+    components?: IComponentMountConfiguration[] | IComponentContainer;
     store?: Redux.Store;
 }
 
@@ -130,8 +147,8 @@ class Namespace extends ApiComponent {
 
     constructor(config: INamespaceConfiguration) {
         super(config);
-        if (config.components && config.components.length) {
-            config.components.forEach(c => this.mount(c.location, c.component, c.stateLocation));
+        if (config.components) {
+            this.mountAll(config.components);
         }
     }
 
@@ -146,17 +163,29 @@ class Namespace extends ApiComponent {
 
     mount(location: string, component: ApiComponent, stateLocation?: string): Namespace {
         this.components[location] = component;
-        if (component.defaultState) this.updateDefaultState(stateLocation, component.defaultState);
-        if (stateLocation) {
-            this._stateLocation[location] = stateLocation;
-        }
         component.parent = this;
+        if (component.defaultState) this.updateDefaultState(stateLocation, component.defaultState);
         if (component instanceof Action) {
+            // Actions with an undefined state location operate on the parent Namespace's entire state
+            this._stateLocation[location] = stateLocation;
             this[location] = component.initiator.bind(this, component);
         } else {
+            // Namespaces *must* have a state location, we'll use the mount location if necessary
+            this._stateLocation[location] = stateLocation || location;
             this[location] = component;
         }
         return this;
+    }
+
+    mountAll(components: IComponentMountConfiguration[] | IComponentContainer) {
+        if (components.length) {
+            (components as IComponentMountConfiguration[])
+                .forEach(c => this.mount(c.location, c.component, c.stateLocation));
+        } else {
+            for (let location in components) {
+                this.mount(location, components[location]);
+            }
+        }
     }
 
     unmount(location: string): Namespace {
@@ -204,12 +233,23 @@ interface ICollection<K, V> {
 }
 
 class CollectionAction extends Action {
-    getState: Function = () => this.parent ? this.parent.getState().get(this.parent.stateLocation(this)) : null;
+    defaultState: ICollection<any, any>;
+    reducer: (state: ICollection<any, any>, action: IReduxAction) => ICollection<any, any> |
+        ((state: ICollection<any, any>, action: IReduxAction) => ICollection<any, any>)[];
+
+    protected _get(state, location) {
+        if (location) return state.get(location);
+        else return state;
+    }
 }
 
 class CollectionNamespace extends Namespace {
     defaultState: ICollection<any, any>;
-    getState: Function = () => this.parent ? this.parent.getState().get(this.parent.stateLocation(this)) : null;
+
+    protected _get(state, location) {
+        if (location) return state.get(location);
+        else return state;
+    }
 
     protected updateDefaultState(stateLocation, state: ICollection<any, any>): CollectionNamespace {
         if (stateLocation) {

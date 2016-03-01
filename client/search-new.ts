@@ -1,5 +1,6 @@
 /// <reference path="api-component.ts" />
 /// <reference path="definitions/immutable/immutable.d.ts" />
+/// <reference path="definitions/jquery/jquery.d.ts" />
 
 import Immutable = require('immutable');
 
@@ -31,8 +32,16 @@ export class RecipeSearchResult extends SearchResultRecord {
 }
 
 class Search extends CollectionAction {
-    initiator = function(action: Search) {
-        action.getStore().dispatch({type: action.name})
+
+    initiator = function(action: Search, searchTerm: string, page: number = 1): JQueryPromise<any> {
+        return jQuery.getJSON(action.endpoint.url, {search: searchTerm, page: page}).then(data => {
+            this.getStore().dispatch({
+                type: action.name,
+                search: searchTerm,
+                results: data.results,
+                nextPage: data.next_page
+            });
+        });
     };
 
     reducer = function(state, action) {
@@ -61,7 +70,7 @@ class ToggleRetrieval extends CollectionAction {
     }
 }
 
-class RetrieveAll extends Action {
+class RetrieveAll extends CollectionAction {
     reducer = (state, action) => {
         let urlTuples = state.get("results").map(result => [result.url, true]),
             retrieve = Immutable.Map(urlTuples);
@@ -69,29 +78,47 @@ class RetrieveAll extends Action {
     }
 }
 
-class RetrieveNone extends Action {
+class RetrieveNone extends CollectionAction {
     reducer = (state, action) => {
         return state.set("retrieve", Immutable.Map());
     }
 }
 
+const shouldRetrieve = new CollectionAction(function (action, recipe: RecipeSearchResult) {
+    return action.getState().get("retrieve").get(recipe.url);
+});
+
+const getSearchTerm = new CollectionAction(function (action) {
+    return action.getState().get("nextPage")
+});
+
+const getNextPage = new CollectionAction(function (action) {
+    return action.getState().get("nextPage")
+});
+
+const loadNextSearchPage = new CollectionAction(function() {
+    return this.search(this.getSearchTerm(), this.getNextPage());
+});
+
+const taggedForRetrieval = new CollectionAction(function (action) {
+    return action.getState().get("results").filter(r => this.getState().get("retrieve").get(r.url));
+});
+
+const getResults = new CollectionAction(function (action) {
+    return action.getState().get("results");
+});
+
 var RecipeSearch = new CollectionNamespace({
     name: "Recipe Search",
     defaultState: Immutable.fromJS({}),
-    components: [
-        {
-            component: new CollectionNamespace({
-                name: "Food Network Recipe Search",
-                defaultState: Immutable.fromJS({results: [], search: "", retrieve: {}, next_page: 1})
-            }),
-            location: "foodNetwork"
-        },
-        {
-            component: new CollectionNamespace({
-                name: "Food.com Recipe Search",
-                defaultState: Immutable.fromJS({results: [], search: "", retrieve: {}, next_page: 1})
-            }),
-            location: "foodCom"
-        }
-    ]
+    components: {
+        foodNetwork: new CollectionNamespace({
+            name: "Food Network Recipe Search",
+            defaultState: Immutable.fromJS({results: [], search: "", retrieve: {}, next_page: 1})
+        }),
+        foodCom: new CollectionNamespace({
+            name: "Food.com Recipe Search",
+            defaultState: Immutable.fromJS({results: [], search: "", retrieve: {}, next_page: 1})
+        })
+    }
 });
