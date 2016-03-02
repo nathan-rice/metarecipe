@@ -16,11 +16,11 @@ class BaseSearchManager extends React.Component<any, any> {
             <div>
                 <h2>Recipe search</h2>
                 <SearchTermInput />
-                <SearchResults title="Food Network results" search={api.search.site.foodNetwork}
-                               results={api.search.site.foodNetwork.getResults()}/>
-                <SearchResults title="Food.com results" search={api.search.site.foodCom}
-                               results={api.search.site.foodCom.getResults()}/>
-                <button onClick={api.search.retrieveSelected} className="btn btn-primary">
+                <SearchResults title="Food Network results" search={api.search.foodNetwork}
+                               results={api.search.foodNetwork.getResults()}/>
+                <SearchResults title="Food.com results" search={api.search.foodCom}
+                               results={api.search.foodCom.search()}/>
+                <button onClick={e => api.search.retrieveSelected()} className="btn btn-primary">
                     Retrieve selected results
                 </button>
             </div>
@@ -34,8 +34,8 @@ class BaseSearchTermInput extends React.Component<any, any> {
 
     submit(values) {
         if (values.searchTerm) {
-            api.search.site.foodNetwork.search(values.searchTerm);
-            api.search.site.foodCom.search(values.searchTerm);
+            api.search.foodNetwork.search(values.searchTerm);
+            api.search.foodCom.search(values.searchTerm);
         }
     }
 

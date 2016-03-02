@@ -34,23 +34,18 @@ class Endpoint implements IEndpoint {
     headers: string[];
     body: IEndpointBodyInput;
 
-    constructor(config: IEndpoint) {
+    configure(config: IEndpoint) {
         if (config.method) this.method = config.method;
         if (config.arguments) this.arguments = config.arguments;
         if (config.body) this.body = config.body;
         if (config.headers) this.headers = config.headers;
         this.url = config.url;
+        return this;
     }
-}
 
-interface IAction {
-    endpoint?: Endpoint | string;
-    initiator?: Function;
-    reducer?: ((state, action: IReduxAction) => Object) | ((state, action: IReduxAction) => Object)[];
-    name?: string;
-    description?: string;
-    defaultState?: Object;
-    getState?: Function;
+    constructor(config: IEndpoint) {
+        this.configure(config);
+    }
 }
 
 interface IApiComponent {
@@ -60,6 +55,12 @@ interface IApiComponent {
     defaultState?: Object;
     store?: Redux.Store;
     getState?: Function;
+}
+
+interface IAction extends IApiComponent {
+    endpoint?: Endpoint | string;
+    initiator?: Function;
+    reducer?: ((state, action: IReduxAction) => Object) | ((state, action: IReduxAction) => Object)[];
 }
 
 class ApiComponent {
@@ -78,13 +79,18 @@ class ApiComponent {
         else return state;
     }
 
-    constructor(config: IApiComponent) {
+    configure(config: IApiComponent) {
         if (config.description) this.description = config.description;
         if (config.parent) this.parent = config.parent;
         if (config.getState) this.getState = config.getState;
         if (config.store) this.store = config.store;
         if (config.defaultState) this.defaultState = config.defaultState;
         if (config.name) this.name = config.name;
+        return this;
+    }
+
+    constructor(config?) {
+        if (config) this.configure(config);
     }
 
     getStore(): Redux.Store {
@@ -93,18 +99,40 @@ class ApiComponent {
 
 }
 
-class Action extends ApiComponent implements IAction {
+class Action extends ApiComponent implements IAction, Function {
+
     endpoint: Endpoint;
-    initiator: Function = (action: Action) => action.getStore().dispatch({type: action.name});
+
+    initiator: Function = function(action: Action, data) {
+        let reduxAction = {type: action.name}, key;
+        for (key in data) {
+            reduxAction[key] = data[key];
+        }
+        action.getStore().dispatch(reduxAction);
+        return this;
+    };
+
     reducer: ((state, action: IReduxAction) => Object) | ((state, action: IReduxAction) => Object)[];
 
-    constructor(config: IAction | Function) {
-        super(config);
+    /*
+     * Required in order to masquerade as a function for the purpose of type checking
+     */
+    apply = (thisArg: any, argArray?: any) => this.initiator.apply(thisArg, argArray);
+    call = (thisArg: any, ...argArray: any[]) => this.initiator.call(thisArg, ...argArray);
+    bind = (thisArg: any, ...argArray: any[]) => this.initiator.bind(thisArg, ...argArray);
+    prototype: any;
+    length: number;
+    arguments: any;
+    caller: Function;
+
+    configure(config: IAction | Function) {
         if (config instanceof Function) {
             this.initiator = config;
         }
         else {
-            let endpoint = (config as IAction).endpoint;
+            let conf: IAction = config;
+            super.configure(conf);
+            let endpoint = conf.endpoint;
             if (endpoint) {
                 if (typeof endpoint === "string") {
                     this.endpoint = new Endpoint({url: endpoint});
@@ -112,9 +140,10 @@ class Action extends ApiComponent implements IAction {
                     this.endpoint = endpoint;
                 }
             }
-            if ((config as IAction).reducer) this.reducer = (config as IAction).reducer;
-            this.initiator = (config as IAction).initiator;
+            if (conf.reducer) this.reducer = conf.reducer;
+            this.initiator = conf.initiator;
         }
+        return this;
     }
 
     reduce: Function = (state, action) => {
@@ -152,11 +181,21 @@ class Namespace extends ApiComponent {
     defaultState = {};
     protected _stateLocation = {};
 
-    constructor(config: INamespaceConfiguration) {
+    constructor(config?: INamespaceConfiguration) {
         super(config);
+        for (let key in this) {
+            // This ensures consistent behavior for ApiComponents defined on a namespace as part of a class declaration
+            if (this[key] instanceof ApiComponent && !this.mountLocation(this[key])) this.mount(key, this[key]);
+        }
+
+    }
+
+    configure(config: INamespaceConfiguration) {
+        super.configure(config);
         if (config.components) {
             this.mountAll(config.components);
         }
+        return this;
     }
 
     protected updateDefaultState(stateLocation, state): Namespace {
@@ -187,14 +226,16 @@ class Namespace extends ApiComponent {
     }
 
     mountAll(components: IComponentMountConfiguration[] | IComponentContainer) {
-        if ((components as IComponentMountConfiguration[]).length) {
-            (components as IComponentMountConfiguration[])
-                .forEach(c => this.mount(c.location, c.component, c.stateLocation));
-        } else {
-            for (let location in components) {
-                this.mount(location, components[location]);
+        let key, component;
+        for (key in components) {
+            component = components[key];
+            if (component instanceof ApiComponent) {
+                this.mount(key, component);
+            } else {
+                this.mount(component.location, component.component, component.stateLocation)
             }
         }
+        return this;
     }
 
     unmount(location: string): Namespace {

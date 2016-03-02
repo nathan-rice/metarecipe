@@ -6,13 +6,13 @@
 
 import Redux = require('redux');
 import ReduxForm = require('redux-form');
-import Search = require('search');
+import Search = require('search-new');
 import Crud = require('crud');
 import RecipeCreator = require('recipe-creator');
 
 export const
     store = Redux.createStore(state => state),
-    search = new Search.RecipeSearchManager(() => store.getState().search, store),
+    search = new Search.RecipeSearchManager({getState: () => store.getState().search, store: store}),
     crud = new Crud.ObjectManager(() => store.getState().crud, store),
     recipeCreator = new RecipeCreator.RecipeCreatorService(() => store.getState().recipeCreator, store);
 
