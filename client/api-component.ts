@@ -10,7 +10,7 @@ interface IEndpointInput {
 }
 
 interface IEndpointBodyInput extends IEndpointInput {
-    contentType: string;
+    contentType?: string;
     converter?: (bodyObject) => string;
     schema?: string;
 }
@@ -44,8 +44,8 @@ class Endpoint implements IEndpoint {
 }
 
 interface IAction {
-    endpoint?: Endpoint;
-    initiator: Function;
+    endpoint?: Endpoint | string;
+    initiator?: Function;
     reducer?: ((state, action: IReduxAction) => Object) | ((state, action: IReduxAction) => Object)[];
     name?: string;
     description?: string;
@@ -104,7 +104,14 @@ class Action extends ApiComponent implements IAction {
             this.initiator = config;
         }
         else {
-            if ((config as IAction).endpoint) this.endpoint = (config as IAction).endpoint;
+            let endpoint = (config as IAction).endpoint;
+            if (endpoint) {
+                if (typeof endpoint === "string") {
+                    this.endpoint = new Endpoint({url: endpoint});
+                } else {
+                    this.endpoint = endpoint;
+                }
+            }
             if ((config as IAction).reducer) this.reducer = (config as IAction).reducer;
             this.initiator = (config as IAction).initiator;
         }
@@ -126,7 +133,7 @@ class Action extends ApiComponent implements IAction {
 }
 
 interface IComponentContainer {
-    (key: string): ApiComponent;
+    [key: string]: ApiComponent;
 }
 
 interface INamespaceConfiguration extends IApiComponent {
@@ -156,7 +163,9 @@ class Namespace extends ApiComponent {
         if (stateLocation) {
             this.defaultState[stateLocation] = state;
         } else {
-            Object.apply(this.defaultState, state);
+            for (let key in state) {
+                this.defaultState[key] = state[key];
+            }
         }
         return this;
     }
@@ -178,7 +187,7 @@ class Namespace extends ApiComponent {
     }
 
     mountAll(components: IComponentMountConfiguration[] | IComponentContainer) {
-        if (components.length) {
+        if ((components as IComponentMountConfiguration[]).length) {
             (components as IComponentMountConfiguration[])
                 .forEach(c => this.mount(c.location, c.component, c.stateLocation));
         } else {
@@ -189,7 +198,7 @@ class Namespace extends ApiComponent {
     }
 
     unmount(location: string): Namespace {
-        delete this.components[location].parent;
+        this.components[location].parent = undefined;
         delete this.components[location];
         delete this.defaultState[location];
         delete this[location];
@@ -212,7 +221,10 @@ class Namespace extends ApiComponent {
         if (!state) return this.defaultState;
         else {
             // applying to a new object here to retain state set by actions with a non-standard getState
-            let newState = Object.apply({}, state), location, stateLocation;
+            let newState = {}, location, stateLocation;
+            for (let key in state) {
+                newState[key] = state[key];
+            }
             for (location in this.components) {
                 stateLocation = this._stateLocation[location];
                 if (stateLocation) {

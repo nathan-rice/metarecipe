@@ -35,7 +35,7 @@ class Search extends CollectionAction {
 
     initiator = function(action: Search, searchTerm: string, page: number = 1): JQueryPromise<any> {
         return jQuery.getJSON(action.endpoint.url, {search: searchTerm, page: page}).then(data => {
-            this.getStore().dispatch({
+            action.getStore().dispatch({
                 type: action.name,
                 search: searchTerm,
                 results: data.results,
@@ -84,41 +84,85 @@ class RetrieveNone extends CollectionAction {
     }
 }
 
-const shouldRetrieve = new CollectionAction(function (action, recipe: RecipeSearchResult) {
-    return action.getState().get("retrieve").get(recipe.url);
-});
+const recipeSearchActions: IComponentContainer = {
+    shouldRetrieve: new CollectionAction(function (action, recipe: RecipeSearchResult) {
+        return action.getState().get("retrieve").get(recipe.url);
+    }),
+    getSearchTerm: new CollectionAction(function (action) {
+        return action.getState().get("nextPage")
+    }),
+    getNextPage: new CollectionAction(function (action) {
+        return action.getState().get("nextPage")
+    }),
+    loadNextSearchPage: new CollectionAction(function () {
+        return this.search(this.getSearchTerm(), this.getNextPage());
+    }),
+    taggedForRetrieval: new CollectionAction(function (action) {
+        return action.getState().get("results").filter(r => action.getState().get("retrieve").get(r.url));
+    }),
+    getResults: new CollectionAction(function (action) {
+        return action.getState().get("results");
+    })
+};
 
-const getSearchTerm = new CollectionAction(function (action) {
-    return action.getState().get("nextPage")
-});
-
-const getNextPage = new CollectionAction(function (action) {
-    return action.getState().get("nextPage")
-});
-
-const loadNextSearchPage = new CollectionAction(function() {
-    return this.search(this.getSearchTerm(), this.getNextPage());
-});
-
-const taggedForRetrieval = new CollectionAction(function (action) {
-    return action.getState().get("results").filter(r => this.getState().get("retrieve").get(r.url));
-});
-
-const getResults = new CollectionAction(function (action) {
-    return action.getState().get("results");
-});
-
-var RecipeSearch = new CollectionNamespace({
-    name: "Recipe Search",
-    defaultState: Immutable.fromJS({}),
+const FoodComRecipeSearch = new CollectionNamespace({
+    name: "Food.com Recipe Search",
+    defaultState: Immutable.fromJS({results: [], search: "", retrieve: {}, next_page: 1}),
     components: {
-        foodNetwork: new CollectionNamespace({
-            name: "Food Network Recipe Search",
-            defaultState: Immutable.fromJS({results: [], search: "", retrieve: {}, next_page: 1})
+        search: new Search({
+            name: "Food.com search",
+            endpoint: "/search/site/food_com/"
         }),
-        foodCom: new CollectionNamespace({
-            name: "Food.com Recipe Search",
-            defaultState: Immutable.fromJS({results: [], search: "", retrieve: {}, next_page: 1})
+        toggleRetrieval: new ToggleRetrieval({name: "Food.com toggle retrieval"}),
+        retrieveAll: new RetrieveAll({name: "Food.com retrieve all"}),
+        retrieveNone: new RetrieveNone({name: "Food.com retrieve none"})
+    }
+});
+
+FoodComRecipeSearch.mountAll(recipeSearchActions);
+
+const FoodNetworkRecipeSearch = new CollectionNamespace({
+    name: "Food Network Recipe Search",
+    defaultState: Immutable.fromJS({results: [], search: "", retrieve: {}, next_page: 1}),
+    components: {
+        search: new Search({
+            name: "Food Network search",
+            endpoint: "/search/site/food_network/"
+        }),
+        toggleRetrieval: new ToggleRetrieval({name: "Food Network toggle retrieval"}),
+        retrieveAll: new RetrieveAll({name: "Food Network retrieve all"}),
+        retrieveNone: new RetrieveNone({name: "Food Network retrieve none"})
+    }
+});
+
+FoodComRecipeSearch.mountAll(recipeSearchActions);
+
+export const RecipeSearchManager = new CollectionNamespace({
+    name: "Recipe Search Manager",
+    defaultState: Immutable.fromJS({retrieve: []}),
+    components: {
+        foodNetwork: FoodNetworkRecipeSearch,
+        foodCom: FoodComRecipeSearch,
+        retrieve: new CollectionAction({
+            name: "Retrieve all selected recipe search results",
+            endpoint: new Endpoint({
+                method: "POST",
+                url: "/search/retrieve/",
+                body: {contentType: "application/json; charset=utf-8"}
+            }),
+            initiator: function(action, results: Immutable.List<RecipeSearchResult>) {
+                return jQuery.ajax({
+                    type: action.endpoint.method,
+                    url: action.endpoint.url,
+                    data: JSON.stringify(results.toJS()),
+                    contentType: action.endpoint.body.contentType
+                }).then(data => action.getStore().dispatch({type: action.name, recipeDocuments: data.recipe_documents}));
+            }
+        }),
+        retrieveSelected: new CollectionAction(function () {
+            var foodNetworkTagged = this.foodNetwork.taggedForRetrieval(),
+                foodComTagged = this.foodCom.taggedForRetrieval();
+            return this.retrieve(foodNetworkTagged.concat(foodComTagged));
         })
     }
 });
