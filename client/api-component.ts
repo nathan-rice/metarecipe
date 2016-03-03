@@ -43,8 +43,10 @@ export class Endpoint implements IEndpoint {
         return this;
     }
 
-    constructor(config: IEndpoint) {
-        this.configure(config);
+    constructor(config?: IEndpoint) {
+        if (config) {
+            this.configure(config);
+        }
     }
 }
 
@@ -93,7 +95,7 @@ export class ApiComponent {
         return this;
     }
 
-    static create(config?) {
+    static create(config?: IApiComponent) {
         return new this().configure(config);
     }
 
@@ -108,10 +110,12 @@ export class Action extends ApiComponent implements IAction, Function {
     endpoint: Endpoint;
 
     initiator: Function = function(action: Action, data) {
-        let reduxAction = {type: action.name}, key;
+        let reduxAction = {}, key;
         for (key in data) {
             reduxAction[key] = data[key];
         }
+        // Set the type property of the reduxAction after copying data properties in case type is a data property
+        reduxAction["type"] = action.name;
         action.getStore().dispatch(reduxAction);
         return this;
     };
@@ -150,6 +154,10 @@ export class Action extends ApiComponent implements IAction, Function {
             }
         }
         return this;
+    }
+
+    static create(config?) {
+        return new this().configure(config);
     }
 
     reduce: Function = (state, action) => {

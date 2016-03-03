@@ -20,8 +20,6 @@ class ObjectService {
         static delete: string = 'GENERIC_DELETE';
     };
 
-    typeof
-
     static endpoints = class Endpoints {
         static list: string = ObjectService.crudRoot;
         static create: string = ObjectService.crudRoot;
