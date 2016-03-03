@@ -27,7 +27,7 @@ interface IEndpoint {
     body?: IEndpointBodyInput;
 }
 
-class Endpoint implements IEndpoint {
+export class Endpoint implements IEndpoint {
     url: string;
     method: string = "GET";
     arguments: IEndpointArgumentContainer;
@@ -63,12 +63,14 @@ interface IAction extends IApiComponent {
     reducer?: ((state, action: IReduxAction) => Object) | ((state, action: IReduxAction) => Object)[];
 }
 
-class ApiComponent {
+export class ApiComponent {
     name: string;
     description: string;
     parent: Namespace;
     defaultState: Object;
     store: Redux.Store;
+    reduce: Function;
+
     getState: Function = () => {
         if (!this.parent) return null;
         else return this._get(this.parent.getState(), this.parent.stateLocation(this));
@@ -79,18 +81,20 @@ class ApiComponent {
         else return state;
     }
 
-    configure(config: IApiComponent) {
-        if (config.description) this.description = config.description;
-        if (config.parent) this.parent = config.parent;
-        if (config.getState) this.getState = config.getState;
-        if (config.store) this.store = config.store;
-        if (config.defaultState) this.defaultState = config.defaultState;
-        if (config.name) this.name = config.name;
+    configure(config?: IApiComponent) {
+        if (config) {
+            if (config.description) this.description = config.description;
+            if (config.parent) this.parent = config.parent;
+            if (config.getState) this.getState = config.getState;
+            if (config.store) this.store = config.store;
+            if (config.defaultState) this.defaultState = config.defaultState;
+            if (config.name) this.name = config.name;
+        }
         return this;
     }
 
-    constructor(config?) {
-        if (config) this.configure(config);
+    static create(config?) {
+        return new this().configure(config);
     }
 
     getStore(): Redux.Store {
@@ -99,7 +103,7 @@ class ApiComponent {
 
 }
 
-class Action extends ApiComponent implements IAction, Function {
+export class Action extends ApiComponent implements IAction, Function {
 
     endpoint: Endpoint;
 
@@ -125,23 +129,25 @@ class Action extends ApiComponent implements IAction, Function {
     arguments: any;
     caller: Function;
 
-    configure(config: IAction | Function) {
-        if (config instanceof Function) {
-            this.initiator = config;
-        }
-        else {
-            let conf: IAction = config;
-            super.configure(conf);
-            let endpoint = conf.endpoint;
-            if (endpoint) {
-                if (typeof endpoint === "string") {
-                    this.endpoint = new Endpoint({url: endpoint});
-                } else {
-                    this.endpoint = endpoint;
-                }
+    configure(config?: IAction | Function) {
+        if (config) {
+            if (config instanceof Function) {
+                this.initiator = config;
             }
-            if (conf.reducer) this.reducer = conf.reducer;
-            this.initiator = conf.initiator;
+            else {
+                let conf: IAction = config;
+                super.configure(conf);
+                let endpoint = conf.endpoint;
+                if (endpoint) {
+                    if (typeof endpoint === "string") {
+                        this.endpoint = new Endpoint({url: endpoint});
+                    } else {
+                        this.endpoint = endpoint;
+                    }
+                }
+                if (conf.reducer) this.reducer = conf.reducer;
+                if (conf.initiator) this.initiator = conf.initiator;
+            }
         }
         return this;
     }
@@ -176,23 +182,18 @@ interface IComponentMountConfiguration {
     stateLocation?: string;
 }
 
-class Namespace extends ApiComponent {
+export class Namespace extends ApiComponent {
     components: IComponentContainer | Object = {};
     defaultState = {};
     protected _stateLocation = {};
 
-    constructor(config?: INamespaceConfiguration) {
-        super(config);
+    configure(config?: INamespaceConfiguration) {
+        super.configure(config);
         for (let key in this) {
             // This ensures consistent behavior for ApiComponents defined on a namespace as part of a class declaration
             if (this[key] instanceof ApiComponent && !this.mountLocation(this[key])) this.mount(key, this[key]);
         }
-
-    }
-
-    configure(config: INamespaceConfiguration) {
-        super.configure(config);
-        if (config.components) {
+        if (config && config.components) {
             this.mountAll(config.components);
         }
         return this;
@@ -212,7 +213,6 @@ class Namespace extends ApiComponent {
     mount(location: string, component: ApiComponent, stateLocation?: string): Namespace {
         this.components[location] = component;
         component.parent = this;
-        if (component.defaultState) this.updateDefaultState(stateLocation, component.defaultState);
         if (component instanceof Action) {
             // Actions with an undefined state location operate on the parent Namespace's entire state
             this._stateLocation[location] = stateLocation;
@@ -222,6 +222,7 @@ class Namespace extends ApiComponent {
             this._stateLocation[location] = stateLocation || location;
             this[location] = component;
         }
+        if (component.defaultState) this.updateDefaultState(this._stateLocation[location], component.defaultState);
         return this;
     }
 
@@ -258,7 +259,7 @@ class Namespace extends ApiComponent {
         return this._stateLocation[mountLocation];
     }
 
-    reduce(state, action) {
+    reduce = (state, action) => {
         if (!state) return this.defaultState;
         else {
             // applying to a new object here to retain state set by actions with a non-standard getState
@@ -285,7 +286,7 @@ interface ICollection<K, V> {
     merge: (...iterables: ICollection<K, V>[]) => ICollection<K, V>;
 }
 
-class CollectionAction extends Action {
+export class CollectionAction extends Action {
     defaultState: ICollection<any, any>;
     reducer: (state: ICollection<any, any>, action: IReduxAction) => ICollection<any, any> |
         ((state: ICollection<any, any>, action: IReduxAction) => ICollection<any, any>)[];
@@ -296,7 +297,7 @@ class CollectionAction extends Action {
     }
 }
 
-class CollectionNamespace extends Namespace {
+export class CollectionNamespace extends Namespace {
     defaultState: ICollection<any, any>;
 
     protected _get(state, location) {
@@ -313,7 +314,7 @@ class CollectionNamespace extends Namespace {
         return this;
     }
 
-    reduce(state: ICollection<any, any>, action): ICollection<any, any> {
+    reduce = (state: ICollection<any, any>, action): ICollection<any, any> => {
         if (!state) return this.defaultState;
         else {
             // applying to a new object here to retain state set by actions with a non-standard getState

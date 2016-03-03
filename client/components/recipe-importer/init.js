@@ -7,7 +7,8 @@ require.config({
         "react-redux": "/client/libraries/react-redux",
         "redux-form": "/client/libraries/redux-form",
         "react": "/client/libraries/react",
-        "react-dom": "/client/libraries/react-dom"
+        "react-dom": "/client/libraries/react-dom",
+        "api-component": "/client/api-component"
     }
 });
 
