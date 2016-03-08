@@ -1,11 +1,6 @@
-/// <reference path="definitions/jquery/jquery.d.ts" />
 /// <reference path="definitions/immutable/immutable.d.ts" />
 /// <reference path="definitions/redux/redux.d.ts" />
 /// <reference path="definitions/rangy/rangy.d.ts" />
-
-
-import Immutable = require('immutable');
-import jQuery = require('jquery');
 
 
 const RecipeDocumentWordRecord = Immutable.Record({
@@ -66,8 +61,4 @@ export class RecipeDocument extends RecipeDocumentRecord {
     static create(o) {
         return new RecipeDocument(o);
     }
-}
-
-class ObjectService {
-
 }

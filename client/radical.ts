@@ -9,37 +9,65 @@ interface IEndpointInput {
     converter?: (argumentValue) => string;
 }
 
+class EndpointInput {
+    description: string;
+    converter = (argumentValue) => argumentValue.toString();
+
+    constructor(config?: IEndpointInput) {
+        if (config.description) this.description = config.description;
+        if (config.converter) this.converter = config.converter;
+    }
+}
+
 interface IEndpointBodyInput extends IEndpointInput {
     contentType?: string;
     converter?: (bodyObject) => string;
     schema?: string;
 }
 
+class JsonBodyInput implements IEndpointBodyInput {
+    contentType = "application/json; charset=utf-8";
+    converter = JSON.stringify;
+}
+
 interface IEndpointArgumentContainer {
-    (key: string): IEndpointInput;
+    [key: string]: IEndpointInput;
 }
 
 interface IEndpoint {
-    url: string;
+    url?: string;
     method?: string;
     arguments?: IEndpointArgumentContainer;
-    headers?: string[];
+    headers?: Object;
     body?: IEndpointBodyInput;
+}
+
+interface IEndpointExecutionParameters {
+    arguments?: Object;
+    data?: Object;
+    success?: Function;
+    error?: Function;
+    headers?: Object;
 }
 
 export class Endpoint implements IEndpoint {
     url: string;
     method: string = "GET";
     arguments: IEndpointArgumentContainer;
-    headers: string[];
-    body: IEndpointBodyInput;
+    headers: Object;
+    body: IEndpointBodyInput = {
+        contentType: "application/x-www-form-urlencoded; charset=utf-8",
+        converter: this.toQueryString
+    };
+    responseParser: (response: string) => any = (response) => response;
+    errorParser: (error: string) => any = (error) => error;
 
     configure(config: IEndpoint) {
         if (config.method) this.method = config.method;
         if (config.arguments) this.arguments = config.arguments;
-        if (config.body) this.body = config.body;
         if (config.headers) this.headers = config.headers;
-        this.url = config.url;
+        if (config.body) this.body = config.body;
+        if (config.url) this.url = config.url;
         return this;
     }
 
@@ -48,6 +76,63 @@ export class Endpoint implements IEndpoint {
             this.configure(config);
         }
     }
+
+    private toQueryString(data: Object, converter: Function = (k, v) => v.toString()) {
+        let key, queryArgs = [];
+        for (key in data) {
+            // Handle array-like
+            if (typeof key == "number") {
+                queryArgs.push(key + "=" + encodeURIComponent(converter(data[key].argument, data[key].value)));
+            } else {
+                queryArgs.push(key + "=" + encodeURIComponent(converter(key, data[key])));
+            }
+
+        }
+        return queryArgs.join("&");
+    }
+
+    private setHeaders(request: XMLHttpRequest, headers: Object = {}) {
+        for (let header in headers) {
+            request.setRequestHeader(header, headers[header]);
+        }
+    }
+
+    execute(parameters?: IEndpointExecutionParameters) {
+        var request = new XMLHttpRequest(),
+            url = this.url,
+            data = "";
+        if (parameters) {
+            if (parameters.arguments) {
+                let converter = (k, v) => this.arguments[k].converter(v);
+                url = this.url + "?" + this.toQueryString(parameters.arguments, converter);
+            }
+            request.onload = function () {
+                if (this.status >= 200 && this.status < 400) {
+                    if (parameters.success) parameters.success(this.responseParser(this.response));
+                } else {
+                    if (parameters.error) parameters.error(this.errorParser(this.response));
+                }
+            };
+            if (parameters.data) {
+                data = this.body.converter(parameters.data);
+            }
+        }
+        this.setHeaders(request, this.headers);
+        this.setHeaders(request, parameters.headers);
+        request.setRequestHeader("Content-Type", this.body.contentType);
+        request.open(this.method, url, true);
+        request.send(data)
+    }
+
+    static create(config?: IEndpoint) {
+        return new this().configure(config);
+    }
+}
+
+export class JsonEndpoint extends Endpoint {
+    body = new JsonBodyInput();
+    responseParser = JSON.parse;
+    errorParser = JSON.parse;
 }
 
 interface IApiComponent {
@@ -59,7 +144,7 @@ interface IApiComponent {
     getState?: Function;
 }
 
-interface IAction extends IApiComponent {
+export interface IAction extends IApiComponent {
     endpoint?: Endpoint | string;
     initiator?: Function;
     reducer?: ((state, action: IReduxAction) => Object) | ((state, action: IReduxAction) => Object)[];

@@ -1,14 +1,13 @@
-/// <reference path="api-component.ts" />
+/// <reference path="radical.ts" />
 /// <reference path="definitions/immutable/immutable.d.ts" />
-/// <reference path="definitions/jquery/jquery.d.ts" />
 
 import Immutable = require('immutable');
-import radical = require('api-component');
+import radical = require('radical');
 
 const
     CollectionAction = radical.CollectionAction,
     CollectionNamespace = radical.CollectionNamespace,
-    Endpoint = radical.Endpoint;
+    JsonEndpoint = radical.JsonEndpoint;
 
 const SearchResultRecord = Immutable.Record({title:'', author: '', url: '', id: 0});
 
@@ -39,14 +38,17 @@ export class RecipeSearchResult extends SearchResultRecord {
 
 class Search extends CollectionAction {
 
-    initiator = function(action: Search, searchTerm: string, page: number = 1): JQueryPromise<any> {
-        return jQuery.getJSON(action.endpoint.url, {search: searchTerm, page: page}).then(data => {
-            action.getStore().dispatch({
-                type: action.name,
-                search: searchTerm,
-                results: data.results,
-                nextPage: data.next_page
-            });
+    initiator = function(action: Search, searchTerm: string, page: number = 1) {
+        action.endpoint.execute({
+            arguments: {search: searchTerm, page: page},
+            success: data => {
+                action.getStore().dispatch({
+                    type: action.name,
+                    search: searchTerm,
+                    results: data.results,
+                    nextPage: data.next_page
+                });
+            }
         });
     };
 
@@ -114,7 +116,10 @@ class RecipeSiteSearch extends CollectionNamespace {
 
 class FoodNetworkRecipeSearch extends RecipeSiteSearch {
     name = "Food Network Recipe Search";
-    search = Search.create({name: "Food Network Recipe Search: search", endpoint: "/search/site/food_network/"});
+    search = Search.create({
+        name: "Food Network Recipe Search: search",
+        endpoint: new JsonEndpoint({url: "/search/site/food_network/"})
+    });
     toggleRetrieval = ToggleRetrieval.create({name: "Food Network Recipe Search: toggle retrieval"});
     retrieveAll = RetrieveAll.create({name: "Food Network Recipe Search: retrieve all"});
     retrieveNone = RetrieveNone.create({name: "Food Network Recipe Search: retrieve none"});
@@ -122,7 +127,10 @@ class FoodNetworkRecipeSearch extends RecipeSiteSearch {
 
 class FoodComRecipeSearch extends RecipeSiteSearch {
     name = "Food.com Recipe Search";
-    search = Search.create({name: "Food.com Recipe Search: search", endpoint: "/search/site/food_network/"});
+    search = Search.create({
+        name: "Food.com Recipe Search: search",
+        endpoint: new JsonEndpoint({url: "/search/site/food_network/"})
+    });
     toggleRetrieval = ToggleRetrieval.create({name: "Food.com Recipe Search: toggle retrieval"});
     retrieveAll = RetrieveAll.create({name: "Food.com Recipe Search: retrieve all"});
     retrieveNone = RetrieveNone.create({name: "Food.com Recipe Search: retrieve none"});
@@ -136,18 +144,12 @@ export class RecipeSearchManager extends CollectionNamespace {
 
     retrieve = CollectionAction.create({
         name: "Recipe Search Manager: retrieve all",
-        endpoint: new Endpoint({
-            method: "POST",
-            url: "/search/retrieve/",
-            body: {contentType: "application/json; charset=utf-8"}
-        }),
+        endpoint: new JsonEndpoint({method: "POST", url: "/search/retrieve/"}),
         initiator: function(action, results: Immutable.List<RecipeSearchResult>) {
-            return jQuery.ajax({
-                type: action.endpoint.method,
-                url: action.endpoint.url,
-                data: JSON.stringify(results.toJS()),
-                contentType: action.endpoint.body.contentType
-            }).then(data => action.getStore().dispatch({type: action.name, recipeDocuments: data.recipe_documents}));
+            action.endpoint.execute({
+                data: results.toJS(),
+                success: data => action.getStore().dispatch({type: action.name, recipeDocuments: data.recipe_documents})
+            });
         }
     });
 
