@@ -217,6 +217,7 @@ export class Action extends ApiComponent implements IAction, Function {
     length: number;
     arguments: any;
     caller: Function;
+    [Symbol.hasInstance];
 
     configure(config?: IAction | Function) {
         if (config) {

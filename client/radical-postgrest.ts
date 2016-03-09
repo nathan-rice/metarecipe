@@ -22,7 +22,7 @@ class Field {
     }
 
     protected predicate(operator, value) {
-        return new Predicate(this.name, operator, value);
+        return new Predicate({field: this.name, operator: operator, value: value});
     }
 
     in(value: any[]) {
@@ -88,7 +88,7 @@ class TextField extends Field {
 
 class NotTextField extends TextField {
     protected predicate(operator, value) {
-        return new Predicate(this.name, "not." + operator, value);
+        return new Predicate({field: this.name, operator: "not." + operator, value: value});
     }
 
     protected configure() {
@@ -127,7 +127,7 @@ class NumericField extends Field {
 
 class NotNumericField extends NumericField {
     protected predicate(operator, value) {
-        return new Predicate(this.name, "not." + operator, value);
+        return new Predicate({field: this.name, operator: "not." + operator, value: value});
     }
 
     protected configure() {
@@ -135,32 +135,81 @@ class NotNumericField extends NumericField {
     }
 }
 
-class Predicate {
-    constructor(public field: string, public operator: string, public argument: string) {}
+interface IPredicate {
+    field: string;
+    operator: string;
+    value: string;
 }
 
-interface IQueryConfiguration {
-    predicates?: Predicate[],
-    limit?: number;
-    offset?: number;
-    orderBy?: string[];
+class Predicate implements IPredicate {
+    field: string;
+    operator: string;
+    value: string;
+
+    constructor(config?: IPredicate) {
+        if (config) Object.assign(this, config);
+    }
+
+    toUrlArgument() {
+        return {argument: this.field, value: this.operator + '.' + this.value}
+    }
+}
+
+interface IQuery {
+    predicates: Predicate[],
+    limit: number;
+    offset: number;
+    orderBy: string[];
+}
+
+class Query implements IQuery {
+    predicates: Predicate[] = [];
+    limit: number;
+    offset: number;
+    orderBy: string[] = [];
+
+    constructor(config?: IQuery) {
+        if (config) Object.assign(this, config);
+    }
+
+    urlArguments() {
+        var ordering = this.orderingUrlArgument(), args = ordering ? [ordering] : [];
+        this.predicates.forEach((predicate) => args.push(predicate.toUrlArgument()));
+        return args;
+    }
+
+    protected orderingUrlArgument() {
+        if (this.orderBy.length) {
+            return {argument: "order", value: this.orderBy.join(",")}
+        } else return null;
+    }
+
+    requestHeaders() {
+        let headers = [], start, end;
+        if (this.offset || this.limit) {
+            start = this.offset || 0;
+            end = this.limit ? start + this.limit : "";
+            headers.push("Range: " + start + "-" + end);
+        }
+        return headers;
+    }
 }
 
 interface IModelConfiguration {
     name?: string;
-    defaultQueryConfiguration?: IQueryConfiguration
+    defaultQueryConfiguration?: IQuery
 }
 
 class Model {
 
     name: string;
 
-    defaultQuery: IQueryConfiguration = {
+    defaultQuery: IQuery = {
         predicates: [],
         limit: 10,
     };
 
-    query: IQueryConfiguration = {
+    query: IQuery = {
         predicates: []
     };
 
@@ -255,7 +304,8 @@ class CollectionCrudAction extends radical.CollectionAction {
             if (config.instanceFactory) this.instanceFactory = config.instanceFactory;
             if (config.instanceKey) this.instanceKey = config.instanceKey;
         }
-        return super.configure(config);
+        super.configure(config);
+        return this;
     }
 
     reducer = (state, action) => {
@@ -288,12 +338,6 @@ class Read extends CollectionCrudAction {
         headers: ['Range-Unit: items']
     });
 
-    protected paginationHeader(offset?: number, limit?: number) {
-        let start = offset || 0,
-            end = limit ? offset + limit : "";
-        return "Range: " + start + "-" + end;
-    }
-
     initiator = function(action, predicate) {
         // TODO: need to figure out how queries should be constructed and passed
         action.endpoint.execute({
@@ -306,7 +350,7 @@ class Read extends CollectionCrudAction {
 }
 
 class Update extends CollectionCrudAction {
-    initiator = function(action, predicate) {
+    initiator = function(action, attributes, predicate) {
 
     };
 }
@@ -317,9 +361,10 @@ class Delete extends CollectionCrudAction {
     };
 
     reducer = (state, action) => {
-        // TODO: filter out deleted IDs
-        let instances = state.get("instances").filter(f => true)
-        return state.set("instances");
+        // The fact that we don't convert the returned json to an instance might cause issues with instanceKey
+        let deletedInstanceKeys = new Set(action.instances.map(this.instanceKey)),
+            instances = state.get("instances").filter(instance => deletedInstanceKeys.has(this.instanceKey(instance)));
+        return state.set("instances", instances);
     }
 }
 
