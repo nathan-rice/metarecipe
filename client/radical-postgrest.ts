@@ -1,15 +1,6 @@
 /// <reference path="radical.ts" />
-/// <reference path="definitions/jquery/jquery.d.ts" />
-/// <reference path="definitions/immutable/immutable.d.ts" />
-/// <reference path="definitions/redux/redux.d.ts" />
 
-
-import Immutable = require('immutable');
-import jQuery = require('jquery');
 import radical = require('radical');
-import {CollectionAction, CollectionNamespace, Endpoint, IAction} from "./radical";
-import IEndpointExecutionParameters from "./radical";
-
 
 class Field {
 
@@ -250,92 +241,89 @@ class Model {
     }
 }
 
-interface ICrudAction extends IAction {
-    model?: Model;
+interface ICrudAction extends radical.IAction {
+    instanceFactory?: Function;
+    instanceKey?: Function;
 }
 
-class CollectionCrudAction extends CollectionAction {
-    model: Model;
+class CollectionCrudAction extends radical.CollectionAction {
+    instanceFactory: Function;
+    instanceKey: Function;
+
     configure(config?: ICrudAction) {
-        if (config.model) {
-            this.model = config.model;
-            if (this.name) {
-                // The name field was defined directly on the class
-                this.name = config.model.name + ": " + this.name;
-            } else if (config.name) {
-                this.name = config.model.name + ": " + config.name;
-                // Removing the name property
-                delete config.name;
-            }
-
+        if (config) {
+            if (config.instanceFactory) this.instanceFactory = config.instanceFactory;
+            if (config.instanceKey) this.instanceKey = config.instanceKey;
         }
-        super.configure(config);
-        return this;
+        return super.configure(config);
     }
+
+    reducer = (state, action) => {
+        let instances = action.instances
+            .map(this.instanceFactory)
+            .reduce((entries, entry) => entries.set(this.instanceKey(entry), entry), state.get("instances"));
+        return state.set("instances", instances);
+    };
 }
+
 
 class Create extends CollectionCrudAction {
-    name = "create";
-
-    endpoint = Endpoint.create({
+    endpoint = radical.JsonEndpoint.create({
         method: "POST",
-        headers: ['Prefer: return=representation', 'Range-Unit: items']
+        headers: ['Prefer: return=representation']
     });
 
-    initiator = function(action, predicate) {
-        let parameters: IEndpointExecutionParameters = {
-            arguments: this.model.toUrlArguments(),
-            success: data => {
-                action.getStore().dispatch({
-                    type: action.name
-                })
+    initiator = function(action, objects) {
+        action.endpoint.execute({
+            data: objects,
+            success: response => {
+                action.getStore().dispatch({type: action.name, instances: response})
             }
-        };
-        if (this.model.query.offset || this.model.query.limit) {
-            let fromIdx = this.model.query.offset || 0,
-                toIdx = this.model.query.limit ? fromIdx + this.model.query.limit : "";
-            parameters.headers = ['Range: ' + fromIdx + '-' + toIdx];
-        }
-        action.endpoint.execute(parameters);
+        });
     };
-
-    reducer = (state, action) => {
-        return state;
-    };
-
  }
 
-class Read extends CollectionAction {
+class Read extends CollectionCrudAction {
+    endpoint = radical.JsonEndpoint.create({
+        headers: ['Range-Unit: items']
+    });
+
+    protected paginationHeader(offset?: number, limit?: number) {
+        let start = offset || 0,
+            end = limit ? offset + limit : "";
+        return "Range: " + start + "-" + end;
+    }
+
+    initiator = function(action, predicate) {
+        // TODO: need to figure out how queries should be constructed and passed
+        action.endpoint.execute({
+            headers: [this.paginationHeader()],
+            success: response => {
+                action.getStore().dispatch({type: action.name, instances: response})
+            }
+        });
+    };
+}
+
+class Update extends CollectionCrudAction {
+    initiator = function(action, predicate) {
+
+    };
+}
+
+class Delete extends CollectionCrudAction {
     initiator = function(action, predicate) {
 
     };
 
     reducer = (state, action) => {
-        return state;
+        // TODO: filter out deleted IDs
+        let instances = state.get("instances").filter(f => true)
+        return state.set("instances");
     }
 }
 
-class Update extends CollectionAction {
-    initiator = function(action, predicate) {
-
-    };
-
-    reducer = (state, action) => {
-        return state;
-    }
-}
-
-class Delete extends CollectionAction {
-    initiator = function(action, predicate) {
-
-    };
-
-    reducer = (state, action) => {
-        return state;
-    }
-}
-
-class DataService extends CollectionNamespace {
+class DataService extends radical.CollectionNamespace {
     model: Model;
     create: Create;
     read: Read;

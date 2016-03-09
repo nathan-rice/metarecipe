@@ -42,7 +42,7 @@ interface IEndpoint {
     body?: IEndpointBodyInput;
 }
 
-interface IEndpointExecutionParameters {
+export interface IEndpointExecutionParameters {
     arguments?: Object;
     data?: Object;
     success?: Function;
