@@ -1,22 +1,27 @@
 /// <reference path="radical.ts" />
 
-import radical = require('radical');
+import * as radical from 'radical';
 
-class Field {
+interface IField {
+    name: string;
+    primary?: boolean;
+}
 
-    protected model: Model;
+class Field implements IField {
     protected inOperator = "in";
     protected isOperator = "is";
     protected eqOperator = "eq";
     protected notField: typeof Field = NotField;
+    name: string;
+    primary: boolean;
     not: Field;
 
-    constructor(public name: string, public primary?: boolean) {
-        this.configure();
+    constructor(config?: IField) {
+        this.configure(config);
     }
 
-    protected configure() {
-        this.not = new this.notField(this.name, this.primary);
+    protected configure(config?: IField) {
+        this.not = new this.notField(config);
         // Since the not property has to exist on the not-field, might as well make it semi-functional
         this.not.not = this;
     }
@@ -26,35 +31,30 @@ class Field {
     }
 
     in(value: any[]) {
-        this.model.addQueryPredicate(this.predicate(this.inOperator, value.join(",")));
-        return this.model;
+        return this.predicate(this.inOperator, value.join(","));
     }
 
     is(value: boolean) {
         let strValue = value === null ? "null" : value.toString();
-        this.model.addQueryPredicate(this.predicate(this.isOperator, strValue));
-        return this.model;
+        return this.predicate(this.isOperator, strValue);
     }
 
     equals(value) {
-        this.model.addQueryPredicate(this.predicate(this.eqOperator, value));
-        return this.model;
+        return this.predicate(this.eqOperator, value);
     }
 
-    orderByAscending() {
-        this.model.orderBy(this.name + ".asc");
-        return this.model;
+    orderAscending() {
+        return this.name + ".asc";
     };
 
-    orderByDescending() {
-        this.model.orderBy(this.name + ".desc");
-        return this.model;
+    orderDescending() {
+        return this.name + ".desc";
     };
 }
 
 class NotField extends Field {
     protected predicate(operator, value) {
-        return new Predicate(this.name, "not." + operator, value);
+        return new Predicate({field: this.name, operator: "not." + operator, value: value});
     }
 
     protected configure() {
@@ -70,20 +70,16 @@ class TextField extends Field {
     not: NotTextField;
 
     like(value: string) {
-        this.model.addQueryPredicate(this.predicate(this.likeOperator, value));
-        return this.model;
+        return this.predicate(this.likeOperator, value);
     }
 
     iLike(value: string) {
-        this.model.addQueryPredicate(this.predicate(this.iLikeOperator, value));
-        return this.model;
+         return this.predicate(this.iLikeOperator, value);
     }
 
     fullTextSearch(value: string) {
-        this.model.addQueryPredicate(this.predicate(this.fullTextSearchOperator, value));
-        return this.model;
+        return this.predicate(this.fullTextSearchOperator, value);
     }
-
 }
 
 class NotTextField extends TextField {
@@ -105,23 +101,19 @@ class NumericField extends Field {
     not: NotNumericField;
 
     greaterThan(value: number) {
-        this.model.addQueryPredicate(this.predicate(this.greaterThanOperator, value));
-        return this.model;
+        return this.predicate(this.greaterThanOperator, value);
     }
 
     lessThan(value: number) {
-        this.model.addQueryPredicate(this.predicate(this.lessThanOperator, value));
-        return this.model;
+        return this.predicate(this.lessThanOperator, value);
     }
 
     greaterThanOrEqualTo(value: number) {
-        this.model.addQueryPredicate(this.predicate(this.greaterThanOrEqualToOperator, value));
-        return this.model;
+        return this.predicate(this.greaterThanOrEqualToOperator, value);
     }
 
     lessThanOrEqualTo(value: number) {
-        this.model.addQueryPredicate(this.predicate(this.lessThanOrEqualToOperator, value));
-        return this.model;
+        return this.predicate(this.lessThanOrEqualToOperator, value);
     }
 }
 
@@ -195,98 +187,42 @@ class Query implements IQuery {
     }
 }
 
-interface IModelConfiguration {
+interface IModel {
     name?: string;
-    defaultQueryConfiguration?: IQuery
+    fields?: Field[];
+    hash?: Function;
 }
 
 class Model {
 
+    protected primary;
     name: string;
 
-    defaultQuery: IQuery = {
-        predicates: [],
-        limit: 10,
-    };
-
-    query: IQuery = {
-        predicates: []
-    };
-
-    addQueryPredicate(predicate: Predicate) {
-        this.query.predicates.push(predicate)
-    }
-
-    limit(value: number) {
-        this.query.limit = value;
-        return this;
-    }
-
-    offset(value: number) {
-        this.query.offset = value;
-        return this;
-    };
-
-    orderBy(clause) {
-        this.query.orderBy.push(clause);
-    }
-
-    toUrlArguments() {
-        var args = [];
-        this.query.predicates.forEach((predicate) => {
-            args.push({argument: predicate.field, value: predicate.operator + '.' + predicate.argument})
-        });
-        args.push({argument: "order", value: this.query.orderBy.join(",")});
-        return args;
-    }
-
-    newQuery() {
-        this.query = {};
-        for (let key in this.defaultQuery) {
-            if (key == "predicates" || key == "orderBy") {
-                this.query[key] = this.defaultQuery[key].slice();
-            } else {
-                this.query[key] = this.defaultQuery[key]
-            }
-        }
-        return this;
-    }
-
-    saveQueryAsDefault() {
-        this.defaultQuery = {};
-        for (let key in this.query) {
-            if (key == "predicates" || key == "orderBy") {
-                this.defaultQuery[key] = this.query[key].slice();
-            } else {
-                this.defaultQuery[key] = this.query[key]
-            }
-        }
-        return this;
-    }
-
-    constructor(config?: IModelConfiguration) {
+    constructor(config?: IModel) {
         this.configure(config);
     }
 
-    configure(config?: IModelConfiguration) {
+    configure(config?: IModel) {
+        if (config) Object.assign(this, config);
+        this.primary = [];
         for (let key in this) {
-            if (this[key] instanceof Field) {
-                this[key].model = this;
-                this[key].not.model = this;
-            }
-        }
-        if (config) {
-            if (config.name) this.name = config.name;
-            if (config.defaultQueryConfiguration) {
-                for (let key in config.defaultQueryConfiguration) {
-                    this.defaultQuery[key] = config.defaultQueryConfiguration[key];
-                }
+            if (this[key] instanceof Field && this[key].primary) {
+                this.primary.push({name: key, field: this[key]});
             }
         }
     }
 
-    static create(config?: IModelConfiguration) {
+    static create(config?: IModel) {
         return new this().configure(config);
+    }
+
+    hash = (instance) => {
+        if (!this.primary.length) {
+            throw new Error("All models must have at least one primary field, or specify a hash function");
+        }
+        var key = instance[this.primary[0].name];
+        this.primary.slice(1).forEach(primary => key += ":" + instance[primary.name]);
+        return key;
     }
 }
 
