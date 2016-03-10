@@ -265,8 +265,8 @@ interface IComponentContainer {
     [key: string]: ApiComponent;
 }
 
-interface INamespaceConfiguration extends IApiComponent {
-    components?: IComponentMountConfiguration[] | IComponentContainer;
+export interface INamespace extends IApiComponent {
+    components?: IComponentMountConfiguration[] | IComponentContainer | Object;
     store?: Redux.Store;
 }
 
@@ -276,12 +276,12 @@ interface IComponentMountConfiguration {
     stateLocation?: string;
 }
 
-export class Namespace extends ApiComponent {
+export class Namespace extends ApiComponent implements INamespace {
     components: IComponentContainer | Object = {};
     defaultState = {};
     protected _stateLocation = {};
 
-    configure(config?: INamespaceConfiguration) {
+    configure(config?: INamespace) {
         super.configure(config);
         for (let key in this) {
             // This ensures consistent behavior for ApiComponents defined on a namespace as part of a class declaration
@@ -320,7 +320,7 @@ export class Namespace extends ApiComponent {
         return this;
     }
 
-    mountAll(components: IComponentMountConfiguration[] | IComponentContainer) {
+    mountAll(components: IComponentMountConfiguration[] | IComponentContainer | Object) {
         let key, component;
         for (key in components) {
             component = components[key];

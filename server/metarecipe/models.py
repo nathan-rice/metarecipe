@@ -35,7 +35,7 @@ class RecipeDocument(db.Model):
 
     @classmethod
     def _transform_word(cls, word_):
-        # Numbers are extracted and replaced with a hash to improve model performance
+        # Numbers are extracted and replaced with a index to improve model performance
         if cls._number_re.match(word_):
             return cls._FormattedWord("#", word_)
         # The space around symbols is retained to improve document rendering

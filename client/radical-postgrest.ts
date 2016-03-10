@@ -216,38 +216,37 @@ class Model {
         return new this().configure(config);
     }
 
-    hash = (instance) => {
+    index = (instance) => {
         if (!this.primary.length) {
-            throw new Error("All models must have at least one primary field, or specify a hash function");
+            throw new Error("All models must have at least one primary field, or specify an index function");
         }
         var key = instance[this.primary[0].name];
         this.primary.slice(1).forEach(primary => key += ":" + instance[primary.name]);
         return key;
-    }
+    };
+
+    factory = (instance) => {
+        return instance;
+    };
 }
 
 interface ICrudAction extends radical.IAction {
-    instanceFactory?: Function;
-    instanceKey?: Function;
+    model: Model;
 }
 
 class CollectionCrudAction extends radical.CollectionAction {
-    instanceFactory: Function;
-    instanceKey: Function;
+    model: Model;
 
     configure(config?: ICrudAction) {
-        if (config) {
-            if (config.instanceFactory) this.instanceFactory = config.instanceFactory;
-            if (config.instanceKey) this.instanceKey = config.instanceKey;
-        }
+        if (config) Object.assign(this, config);
         super.configure(config);
         return this;
     }
 
     reducer = (state, action) => {
         let instances = action.instances
-            .map(this.instanceFactory)
-            .reduce((entries, entry) => entries.set(this.instanceKey(entry), entry), state.get("instances"));
+            .map(this.model.factory)
+            .reduce((instances, instance) => instances.set(this.model.index(instance), instance), state.get("instances"));
         return state.set("instances", instances);
     };
 }
@@ -274,10 +273,10 @@ class Read extends CollectionCrudAction {
         headers: ['Range-Unit: items']
     });
 
-    initiator = function(action, predicate) {
-        // TODO: need to figure out how queries should be constructed and passed
+    initiator = function(action, query: Query) {
         action.endpoint.execute({
-            headers: [this.paginationHeader()],
+            headers: query.requestHeaders(),
+            arguments: query.urlArguments(),
             success: response => {
                 action.getStore().dispatch({type: action.name, instances: response})
             }
@@ -286,28 +285,67 @@ class Read extends CollectionCrudAction {
 }
 
 class Update extends CollectionCrudAction {
-    initiator = function(action, attributes, predicate) {
-
+    initiator = function(action, query: Query, data) {
+        action.endpoint.execute({
+            data: data,
+            headers: query.requestHeaders(),
+            arguments: query.urlArguments(),
+            success: response => {
+                action.getStore().dispatch({type: action.name, instances: response})
+            }
+        });
     };
 }
 
 class Delete extends CollectionCrudAction {
-    initiator = function(action, predicate) {
-
+    initiator = function(action, query: Query) {
+        action.endpoint.execute({
+            headers: query.requestHeaders(),
+            arguments: query.urlArguments(),
+            success: response => {
+                action.getStore().dispatch({type: action.name, instances: response})
+            }
+        });
     };
 
     reducer = (state, action) => {
         // The fact that we don't convert the returned json to an instance might cause issues with instanceKey
-        let deletedInstanceKeys = new Set(action.instances.map(this.instanceKey)),
-            instances = state.get("instances").filter(instance => deletedInstanceKeys.has(this.instanceKey(instance)));
+        let deletedIndices = new Set(action.instances.map(this.model.index)),
+            instances = state.get("instances").filter(instance => deletedIndices.has(this.model.index(instance)));
         return state.set("instances", instances);
     }
 }
 
-class DataService extends radical.CollectionNamespace {
+interface IDataService extends radical.INamespace {
+    model?: Model;
+    create?: Create;
+    read?: Read;
+    update?: Update;
+    delete?: Delete;
+}
+
+class CollectionDataService extends radical.CollectionNamespace implements IDataService {
     model: Model;
     create: Create;
     read: Read;
     update: Update;
     delete: Delete;
+
+    configure(config?: IDataService) {
+        if (config) {
+            if (config.create) this.create = config.create;
+            if (config.read) this.read = config.read;
+            if (config.update) this.update = config.update;
+            if (config.delete) this.delete = config.delete;
+            if (config.model) {
+                this.model = config.model;
+                if (this.create) this.create.model = this.model;
+                if (this.read) this.read.model = this.model;
+                if (this.update) this.update.model = this.model;
+                if (this.delete) this.delete.model = this.model;
+            }
+        }
+        super.configure(config);
+        return this;
+    }
 }

@@ -695,7 +695,7 @@
    *
    * Also, an important relationship between these methods must be upheld: if two
    * values are equal, they *must* return the same hashCode. If the values are not
-   * equal, they might have the same hashCode; this is called a hash collision,
+   * equal, they might have the same hashCode; this is called a index collision,
    * and while undesirable for performance reasons, it is acceptable.
    *
    *     if (a.equals(b)) {
@@ -1078,8 +1078,8 @@
 
   // http://jsperf.com/hashing-strings
   function hashString(string) {
-    // This is the hash from JVM
-    // The hash code for a string is computed as
+    // This is the index from JVM
+    // The index code for a string is computed as
     // s[0] * 31 ^ (n - 1) + s[1] * 31 ^ (n - 2) + ... + s[n - 1],
     // where s[i] is the ith character of the string and n is the length of
     // the string. We "mod" the result to make it between 0 (inclusive) and 2^31
@@ -1137,14 +1137,14 @@
                obj.propertyIsEnumerable === obj.constructor.prototype.propertyIsEnumerable) {
       // Since we can't define a non-enumerable property on the object
       // we'll hijack one of the less-used non-enumerable properties to
-      // save our hash on it. Since this is a function it will not show up in
+      // save our index on it. Since this is a function it will not show up in
       // `JSON.stringify` which is what we want.
       obj.propertyIsEnumerable = function() {
         return this.constructor.prototype.propertyIsEnumerable.apply(this, arguments);
       };
       obj.propertyIsEnumerable[UID_HASH_KEY] = hash;
     } else if (obj.nodeType !== undefined) {
-      // At this point we couldn't get the IE `uniqueID` to use as a hash
+      // At this point we couldn't get the IE `uniqueID` to use as a index
       // and we couldn't use a non-enumerable property to exploit the
       // dontEnum bug so we simply add the `UID_HASH_KEY` on the node
       // itself.
@@ -1169,7 +1169,7 @@
     }
   }());
 
-  // IE has a `uniqueID` property on DOM nodes. We can construct the hash from it
+  // IE has a `uniqueID` property on DOM nodes. We can construct the index from it
   // and avoid memory leaks from the IE cloneNode bug.
   function getIENodeHash(node) {
     if (node && node.nodeType > 0) {
