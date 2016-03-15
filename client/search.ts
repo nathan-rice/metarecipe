@@ -98,10 +98,10 @@ class RecipeSiteSearch extends CollectionNamespace {
         return action.getState().get("retrieve").get(recipe.url);
     });
     getSearchTerm = CollectionAction.create(function (action) {
-        return action.getState().get("nextPage")
+        return action.getState().get("search");
     });
     getNextPage = CollectionAction.create(function (action) {
-        return action.getState().get("nextPage")
+        return action.getState().get("nextPage");
     });
     loadNextSearchPage = CollectionAction.create(function () {
         return this.search(this.getSearchTerm(), this.getNextPage());
@@ -129,7 +129,7 @@ class FoodComRecipeSearch extends RecipeSiteSearch {
     name = "Food.com Recipe Search";
     search = Search.create({
         name: "Food.com Recipe Search: search",
-        endpoint: new JsonEndpoint({url: "/search/site/food_network/"})
+        endpoint: new JsonEndpoint({url: "/search/site/food_com/"})
     });
     toggleRetrieval = ToggleRetrieval.create({name: "Food.com Recipe Search: toggle retrieval"});
     retrieveAll = RetrieveAll.create({name: "Food.com Recipe Search: retrieve all"});

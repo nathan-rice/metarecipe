@@ -53,7 +53,7 @@ export interface IEndpointExecutionParameters {
 export class Endpoint implements IEndpoint {
     url: string;
     method: string = "GET";
-    arguments: IEndpointArgumentContainer;
+    arguments: IEndpointArgumentContainer = {};
     headers: Object;
     body: IEndpointBodyInput = {
         contentType: "application/x-www-form-urlencoded; charset=utf-8",
@@ -77,19 +77,29 @@ export class Endpoint implements IEndpoint {
         }
     }
 
-    private toQueryString(data: Object, converter: Function = (k, v) => v.toString()) {
-        let key, queryArgs = [];
+    private convert(argument, value) {
+        if (this.arguments[argument] && this.arguments[argument].converter) {
+            return this.arguments[argument].converter(value);
+        } else {
+            return value.toString();
+        }
+
+    }
+
+    private toQueryString = (data: Object) => {
+        let key, value, queryArgs = [];
         for (key in data) {
             // Handle array-like
             if (typeof key == "number") {
-                queryArgs.push(key + "=" + encodeURIComponent(converter(data[key].argument, data[key].value)));
+                value = this.convert(data[key].argument, data[key].value);
             } else {
-                queryArgs.push(key + "=" + encodeURIComponent(converter(key, data[key])));
+                value = this.convert(key, data[key]);
             }
+            queryArgs.push(key + "=" + encodeURIComponent(value));
 
         }
         return queryArgs.join("&");
-    }
+    };
 
     private setHeaders(request: XMLHttpRequest, headers: Object = {}) {
         for (let header in headers) {
@@ -100,28 +110,28 @@ export class Endpoint implements IEndpoint {
     execute(parameters?: IEndpointExecutionParameters) {
         var request = new XMLHttpRequest(),
             url = this.url,
-            data = "";
+            data = "",
+            endpoint = this;
         if (parameters) {
             if (parameters.arguments) {
-                let converter = (k, v) => this.arguments[k].converter(v);
-                url = this.url + "?" + this.toQueryString(parameters.arguments, converter);
+                url = this.url + "?" + this.toQueryString(parameters.arguments);
             }
             request.onload = function () {
                 if (this.status >= 200 && this.status < 400) {
-                    if (parameters.success) parameters.success(this.responseParser(this.response));
+                    if (parameters.success) parameters.success(endpoint.responseParser(this.response));
                 } else {
-                    if (parameters.error) parameters.error(this.errorParser(this.response));
+                    if (parameters.error) parameters.error(endpoint.errorParser(this.response));
                 }
             };
             if (parameters.data) {
                 data = this.body.converter(parameters.data);
             }
         }
+        request.open(this.method, url, true);
         this.setHeaders(request, this.headers);
         this.setHeaders(request, parameters.headers);
         request.setRequestHeader("Content-Type", this.body.contentType);
-        request.open(this.method, url, true);
-        request.send(data)
+        request.send(data);
     }
 
     static create(config?: IEndpoint) {
@@ -190,6 +200,7 @@ export class ApiComponent {
 
 }
 
+
 export class Action extends ApiComponent implements IAction, Function {
 
     endpoint: Endpoint;
@@ -205,7 +216,15 @@ export class Action extends ApiComponent implements IAction, Function {
         return this;
     };
 
-    reducer: ((state, action: IReduxAction) => Object) | ((state, action: IReduxAction) => Object)[];
+    reducer: ((state, action: IReduxAction) => Object) |
+             ((state, action: IReduxAction) => Object)[] = (state, action) => {
+        for (let key in action) {
+            if (key != "type") {
+                state[key] = action[key];
+            }
+        }
+        return state;
+    };
 
     /*
      * Required in order to masquerade as a function for the purpose of type checking
@@ -217,7 +236,6 @@ export class Action extends ApiComponent implements IAction, Function {
     length: number;
     arguments: any;
     caller: Function;
-    [Symbol.hasInstance];
 
     configure(config?: IAction | Function) {
         if (config) {
@@ -356,7 +374,6 @@ export class Namespace extends ApiComponent implements INamespace {
     reduce = (state, action) => {
         if (!state) return this.defaultState;
         else {
-            // applying to a new object here to retain state set by actions with a non-standard getState
             let newState = {}, location, stateLocation;
             for (let key in state) {
                 newState[key] = state[key];
@@ -364,7 +381,7 @@ export class Namespace extends ApiComponent implements INamespace {
             for (location in this.components) {
                 stateLocation = this._stateLocation[location];
                 if (stateLocation) {
-                    newState[stateLocation] = this.components[location].reduce(state[stateLocation], action);
+                    newState[stateLocation] = this.components[location].reduce(newState[stateLocation], action);
                 } else {
                     newState = this.components[location].reduce(state, action)
                 }
@@ -381,9 +398,18 @@ interface ICollection<K, V> {
 }
 
 export class CollectionAction extends Action {
+
     defaultState: ICollection<any, any>;
+
     reducer: (state: ICollection<any, any>, action: IReduxAction) => ICollection<any, any> |
-        ((state: ICollection<any, any>, action: IReduxAction) => ICollection<any, any>)[];
+             ((state: ICollection<any, any>, action: IReduxAction) => ICollection<any, any>)[] = (state, action) => {
+        for (let key in action) {
+            if (key != "type") {
+                state = state.set(key, action[key]);
+            }
+        }
+        return state;
+    };
 
     protected _get(state, location) {
         if (location) return state.get(location);

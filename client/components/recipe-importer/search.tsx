@@ -3,6 +3,7 @@
 /// <reference path="../../definitions/react-redux/react-redux.d.ts" />
 /// <reference path="../../definitions/redux-form/redux-form.d.ts" />
 
+
 import api = require('api');
 import React = require('react');
 import ReduxForm = require('redux-form');
@@ -58,8 +59,13 @@ export const SearchTermInput = ReduxForm.reduxForm({
     fields: ['searchTerm']
 })(BaseSearchTermInput);
 
+interface ISearchResultsProperties {
+    search: typeof api.search.foodCom | typeof api.search.foodNetwork;
+    results: any;
+    title: string;
+}
 
-export class SearchResults extends React.Component<any, any> {
+export class SearchResults extends React.Component<ISearchResultsProperties, any> {
     render() {
         if (this.props.results.size == 0) return <div/>;
         let mapF = result => <SearchResult search={this.props.search} key={result.id} result={result}/>,
@@ -80,11 +86,11 @@ export class SearchResults extends React.Component<any, any> {
                     </tbody>
                 </table>
                 <div className="pull-left">
-                    <button className="btn btn-default btn-sm" onClick={this.props.search.loadNextSearchPage}>Get more results</button>
+                    <button className="btn btn-default btn-sm" onClick={e => this.props.search.loadNextSearchPage()}>Get more results</button>
                     </div>
                 <div className="pull-right">
-                    <button className="btn btn-default btn-sm" onClick={this.props.search.retrieveAll}>Select all</button>
-                                <button className="btn btn-default btn-sm" onClick={this.props.search.retrieveNone}>Deselect all</button>
+                    <button className="btn btn-default btn-sm" onClick={e => this.props.search.retrieveAll()}>Select all</button>
+                                <button className="btn btn-default btn-sm" onClick={e => this.props.search.retrieveNone()}>Deselect all</button>
                     </div>
                 <div className="clearfix"></div>
             </div>
@@ -92,7 +98,12 @@ export class SearchResults extends React.Component<any, any> {
     }
 }
 
-class SearchResult extends React.Component<any, any> {
+interface ISearchResultProperties {
+    search: typeof api.search.foodCom | typeof api.search.foodNetwork;
+    result: any;
+}
+
+class SearchResult extends React.Component<ISearchResultProperties, any> {
     render() {
         return (
             <tr>

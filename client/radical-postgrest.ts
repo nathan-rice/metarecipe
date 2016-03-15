@@ -1,13 +1,14 @@
+/// <reference path="definitions/es6-shim/es6-shim.d.ts" />
 /// <reference path="radical.ts" />
 
-import * as radical from 'radical';
+import radical = require("radical");
 
-interface IField {
-    name: string;
+export interface IField {
+    name?: string;
     primary?: boolean;
 }
 
-class Field implements IField {
+export class Field implements IField {
     protected inOperator = "in";
     protected isOperator = "is";
     protected eqOperator = "eq";
@@ -62,7 +63,7 @@ class NotField extends Field {
     }
 }
 
-class TextField extends Field {
+export class TextField extends Field {
     protected likeOperator = "like";
     protected iLikeOperator = "ilike";
     protected fullTextSearchOperator = "@@";
@@ -92,7 +93,7 @@ class NotTextField extends TextField {
     }
 }
 
-class NumericField extends Field {
+export class NumericField extends Field {
     protected greaterThanOperator = "gt";
     protected lessThanOperator = "lt";
     protected greaterThanOrEqualToOperator = "gte";
@@ -139,7 +140,11 @@ class Predicate implements IPredicate {
     value: string;
 
     constructor(config?: IPredicate) {
-        if (config) Object.assign(this, config);
+        if (config) {
+            this.field = config.field;
+            this.operator = config.operator;
+            this.value = config.value;
+        }
     }
 
     toUrlArgument() {
@@ -147,21 +152,26 @@ class Predicate implements IPredicate {
     }
 }
 
-interface IQuery {
-    predicates: Predicate[],
-    limit: number;
-    offset: number;
-    orderBy: string[];
+export interface IQuery {
+    predicates?: Predicate[],
+    limit?: number;
+    offset?: number;
+    orderBy?: string[];
 }
 
-class Query implements IQuery {
+export class Query implements IQuery {
     predicates: Predicate[] = [];
     limit: number;
     offset: number;
     orderBy: string[] = [];
 
     constructor(config?: IQuery) {
-        if (config) Object.assign(this, config);
+        if (config) {
+            if (config.predicates) this.predicates = config.predicates;
+            if (config.limit) this.limit = config.limit;
+            if (config.offset) this.offset = config.offset;
+            if (config.orderBy) this.orderBy = config.orderBy;
+        }
     }
 
     urlArguments() {
@@ -187,13 +197,14 @@ class Query implements IQuery {
     }
 }
 
-interface IModel {
+export interface IModel {
     name?: string;
     fields?: Field[];
-    hash?: Function;
+    index?: (instance: any) => any;
+    factory?: (instance: any) => any;
 }
 
-class Model {
+export class Model {
 
     protected primary;
     name: string;
@@ -203,13 +214,26 @@ class Model {
     }
 
     configure(config?: IModel) {
-        if (config) Object.assign(this, config);
-        this.primary = [];
-        for (let key in this) {
-            if (this[key] instanceof Field && this[key].primary) {
-                this.primary.push({name: key, field: this[key]});
+        if (config) {
+            if (config.name) this.name = config.name;
+            if (config.index) this.index = config.index;
+            if (config.factory) this.factory = config.factory;
+            if (config.fields) {
+                config.fields.forEach(field => {
+                    if (field.name) this[field.name] = field
+                });
             }
         }
+        this.primary = [];
+        for (let key in this) {
+            if (this[key] instanceof Field) {
+                if (!this[key].name) this[key].name = key;
+                if (this[key].primary) {
+                    this.primary.push({name: key, field: this[key]});
+                }
+            }
+        }
+        return this;
     }
 
     static create(config?: IModel) {
@@ -234,11 +258,13 @@ interface ICrudAction extends radical.IAction {
     model: Model;
 }
 
-class CollectionCrudAction extends radical.CollectionAction {
+class CollectionCrudAction extends radical.CollectionAction implements ICrudAction {
     model: Model;
 
     configure(config?: ICrudAction) {
-        if (config) Object.assign(this, config);
+        if (config) {
+            if (config.model) this.model = config.model;
+        }
         super.configure(config);
         return this;
     }
@@ -249,10 +275,15 @@ class CollectionCrudAction extends radical.CollectionAction {
             .reduce((instances, instance) => instances.set(this.model.index(instance), instance), state.get("instances"));
         return state.set("instances", instances);
     };
+
+    static create(config?: ICrudAction) {
+        return new this().configure(config);
+    }
 }
 
 
-class Create extends CollectionCrudAction {
+export class Create extends CollectionCrudAction {
+
     endpoint = radical.JsonEndpoint.create({
         method: "POST",
         headers: ['Prefer: return=representation']
@@ -268,7 +299,8 @@ class Create extends CollectionCrudAction {
     };
  }
 
-class Read extends CollectionCrudAction {
+export class Read extends CollectionCrudAction {
+
     endpoint = radical.JsonEndpoint.create({
         headers: ['Range-Unit: items']
     });
@@ -284,7 +316,13 @@ class Read extends CollectionCrudAction {
     };
 }
 
-class Update extends CollectionCrudAction {
+export class Update extends CollectionCrudAction {
+
+    endpoint = radical.JsonEndpoint.create({
+        method: "PUT",
+        headers: ['Prefer: return=representation']
+    });
+
     initiator = function(action, query: Query, data) {
         action.endpoint.execute({
             data: data,
@@ -297,7 +335,13 @@ class Update extends CollectionCrudAction {
     };
 }
 
-class Delete extends CollectionCrudAction {
+export class Delete extends CollectionCrudAction {
+
+    endpoint = radical.JsonEndpoint.create({
+        method: "DELETE",
+        headers: ['Prefer: return=representation']
+    });
+
     initiator = function(action, query: Query) {
         action.endpoint.execute({
             headers: query.requestHeaders(),
@@ -316,36 +360,53 @@ class Delete extends CollectionCrudAction {
     }
 }
 
-interface IDataService extends radical.INamespace {
+export interface IDataService extends radical.INamespace {
     model?: Model;
-    create?: Create;
-    read?: Read;
-    update?: Update;
-    delete?: Delete;
+    create?: CollectionCrudAction;
+    read?: CollectionCrudAction;
+    update?: CollectionCrudAction;
+    delete?: CollectionCrudAction;
+    url?: string;
 }
 
-class CollectionDataService extends radical.CollectionNamespace implements IDataService {
+
+export class CollectionDataService extends radical.CollectionNamespace implements IDataService {
     model: Model;
-    create: Create;
-    read: Read;
-    update: Update;
-    delete: Delete;
+    create = Create.create();
+    read = Read.create();
+    update = Update.create();
+    delete = Delete.create();
+    url: string = "/";
 
     configure(config?: IDataService) {
         if (config) {
+            if (config.url) this.url = config.url;
             if (config.create) this.create = config.create;
             if (config.read) this.read = config.read;
             if (config.update) this.update = config.update;
             if (config.delete) this.delete = config.delete;
-            if (config.model) {
-                this.model = config.model;
-                if (this.create) this.create.model = this.model;
-                if (this.read) this.read.model = this.model;
-                if (this.update) this.update.model = this.model;
-                if (this.delete) this.delete.model = this.model;
-            }
+            if (config.model) this.model = config.model;
         }
+
+        if (!this.url.endsWith("/")) this.url = this.url + "/";
+
+        this.create.model = this.create.model || this.model;
+        this.create.endpoint.url = this.create.endpoint.url || this.url + this.create.model.name;
+
+        this.read.model = this.read.model || this.model;
+        this.read.endpoint.url = this.read.endpoint.url || this.url + this.read.model.name;
+
+        this.update.model = this.update.model || this.model;
+        this.update.endpoint.url = this.update.endpoint.url || this.url + this.update.model.name;
+
+        this.delete.model = this.delete.model || this.model;
+        this.delete.endpoint.url = this.delete.endpoint.url || this.url + this.delete.model.name;
+
         super.configure(config);
         return this;
+    }
+
+    instances() {
+        return this.getState().get("instances");
     }
 }

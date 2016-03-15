@@ -29,7 +29,6 @@ class RecipeDocument(db.Model):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
         self.retrieval_timestamp = datetime.datetime.now()
         self.words = self.get_document_words(self.html)
 
@@ -125,7 +124,10 @@ class RecipeDocumentWord(db.Model):
     _number_re = re.compile(r"(\d+\s*/\s*\d+|\d*\.\d+|\d+)")
 
     def __hash__(self):
-        return self.recipe_document_word_id
+        if self.recipe_document_word_id is None:
+            return id(self)
+        else:
+            return self.recipe_document_word_id
 
     def __lt__(self, other):
         return self.document_position < other.document_position
