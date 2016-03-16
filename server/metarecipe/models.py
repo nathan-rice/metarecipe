@@ -157,14 +157,15 @@ class RecipeDocumentWordTag(db.Model):
     recipe_document_word_id = db.Column(db.Integer, db.ForeignKey(RecipeDocumentWord.recipe_document_word_id))
     word = db.relationship(RecipeDocumentWord)
 
-    recipe_document_tag_set_id = db.Column(db.Integer, db.ForeignKey(RecipeDocumentTagSet.recipe_document_tagset_id))
-    tag_set = db.relationship(RecipeDocumentTagSet, backref="tags")
+    recipe_document_id = db.Column(db.Integer, db.ForeignKey(RecipeDocument.recipe_document_id))
+    document = db.relationship(RecipeDocument, backref="tags")
 
     @property
     def as_dict(self):
         return {
             "recipe_document_word_tag_id": self.recipe_document_word_tag_id,
             "recipe_document_word_id": self.recipe_document_word_id,
+            "recipe_document_id": self.recipe_document_id,
             "tag": self.tag
         }
 

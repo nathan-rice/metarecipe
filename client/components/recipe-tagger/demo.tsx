@@ -10,7 +10,7 @@ import DocumentDisplay = require('document-display')
 class BaseDemoInterface extends React.Component<any, any> {
     render() {
         var documents = this.props.documents,
-            document = documents ? documents.get(this.props.documentID) : null;
+            document = documents ? documents.get(this.props.documentId) : null;
         return (
             <div className="container">
                 <div className="row">
@@ -30,9 +30,9 @@ class BaseDemoInterface extends React.Component<any, any> {
 
 function getDemoInterfaceProps(state) {
     return {
-        documentID: state.crud.getIn(["recipeDocument", "selectedDocumentID"]),
-        documents: state.crud.getIn(["recipeDocument", "documents"]),
-        tags: state.crud.getIn(["recipeDocumentWordTag", "tags"])
+        documentId: state.data.getIn(["recipeDocument", "selected"]).recipe_document_id,
+        documents: state.data.getIn(["recipeDocument", "instances"]),
+        tags: state.data.getIn(["recipeDocumentWordTag", "instances"])
     }
 }
 

@@ -4,13 +4,15 @@
 /// <reference path="../../definitions/rangy/rangy.d.ts" />
 
 import api = require('api');
-import crud = require('crud');
+import data = require('data');
 import React = require('react');
 import jQuery = require('jquery');
 import Immutable = require('immutable');
+import RadicalPostgrest = require('radical-postgrest');
+
 
 interface IDocumentListProperties {
-    documents: Immutable.Iterable<any, crud.RecipeDocument>;
+    documents: Immutable.Iterable<any, data.RecipeDocument>;
 }
 
 export class DocumentList extends React.Component<IDocumentListProperties, any> {
@@ -33,9 +35,9 @@ class DocumentListEntry extends React.Component<any, any> {
     render() {
         let document = this.props.document,
             onClick = () => {
-                return api.crud.recipeDocument.setSelectedDocumentID(document.recipe_document_id);
+                return api.data.recipeDocument.setSelectedDocument(document);
             };
-        if (api.crud.recipeDocument.getSelectedDocumentID() == document.recipe_document_id) {
+        if (api.data.recipeDocument.getSelectedDocument().recipe_document_id == document.recipe_document_id) {
             return (
                 <li className="active">{document.title}</li>
             )
@@ -49,7 +51,7 @@ class DocumentListEntry extends React.Component<any, any> {
     }
 }
 
-function interleaveSpaces(words: Immutable.List<crud.RecipeDocumentWord>) {
+function interleaveSpaces(words: Immutable.List<data.RecipeDocumentWord>) {
     var lastWord, elements = [];
     words.forEach(word => {
         let isNonSymbolWord = !word.original_format || word.word == '#',
@@ -66,12 +68,12 @@ function interleaveSpaces(words: Immutable.List<crud.RecipeDocumentWord>) {
 export class FormattedDocument extends React.Component<any, any> {
 
     constructor() {
+        super();
         this.selectWords = this.selectWords.bind(this);
         this.state = {selectionRect: null};
-        super();
     }
 
-    static firstTag(words: Immutable.List<crud.RecipeDocumentWord>): Immutable.List<crud.RecipeDocumentWord> {
+    static firstTag(words: Immutable.List<data.RecipeDocumentWord>): Immutable.List<data.RecipeDocumentWord> {
         var word;
         if (!words || !(word = words.first())) {
             // Returning undefined here stops execution of while loops based on .firstTag() output.
@@ -86,11 +88,11 @@ export class FormattedDocument extends React.Component<any, any> {
                 return take;
             });
         if (tagWords.size > 0) {
-            return tagWords as Immutable.List<crud.RecipeDocumentWord>;
+            return tagWords as Immutable.List<data.RecipeDocumentWord>;
         }
     }
 
-    static shiftTag(words: Immutable.List<crud.RecipeDocumentWord>): Immutable.List<crud.RecipeDocumentWord> {
+    static shiftTag(words: Immutable.List<data.RecipeDocumentWord>): Immutable.List<data.RecipeDocumentWord> {
         var word;
         if (!words || !(word = words.first())) {
             return words;
@@ -104,12 +106,12 @@ export class FormattedDocument extends React.Component<any, any> {
                 return take;
             });
         if (tagWords.size > 0) {
-            return tagWords as Immutable.List<crud.RecipeDocumentWord>;
+            return tagWords as Immutable.List<data.RecipeDocumentWord>;
         }
     }
 
-    static wordsToTags(words: Immutable.List<crud.RecipeDocumentWord>): Immutable.List<Immutable.List<crud.RecipeDocumentWord>> {
-        var tagWords, tags = Immutable.List<Immutable.List<crud.RecipeDocumentWord>>();
+    static wordsToTags(words: Immutable.List<data.RecipeDocumentWord>): Immutable.List<Immutable.List<data.RecipeDocumentWord>> {
+        var tagWords, tags = Immutable.List<Immutable.List<data.RecipeDocumentWord>>();
         while (tagWords = FormattedDocument.firstTag(words)) {
             tags = tags.push(tagWords);
             words = FormattedDocument.shiftTag(words);
@@ -117,7 +119,7 @@ export class FormattedDocument extends React.Component<any, any> {
         return tags;
     }
 
-    static tagWordsToMarkup(words: Immutable.List<crud.RecipeDocumentWord>) {
+    static tagWordsToMarkup(words: Immutable.List<data.RecipeDocumentWord>) {
         var currentMarkup = [],
             tags = FormattedDocument.wordsToTags(words),
             tagIsLI = (tag) => (tag.first().element_tag == 'li');
@@ -128,7 +130,7 @@ export class FormattedDocument extends React.Component<any, any> {
 
             if (tagGroup.size > 0) {
                 currentMarkup.push(<List key={key} items={tagGroup}/>);
-                tags = tags.skipWhile(tagIsLI) as Immutable.List<Immutable.List<crud.RecipeDocumentWord>>;
+                tags = tags.skipWhile(tagIsLI) as Immutable.List<Immutable.List<data.RecipeDocumentWord>>;
             }
             else {
                 switch (elementTag) {
@@ -166,7 +168,11 @@ export class FormattedDocument extends React.Component<any, any> {
         var document = this.props.document,
             words = document ? document.words.size : null;
         if (document && !words) {
-            api.crud.recipeDocument.words(document.recipe_document_id);
+            let model = api.data.recipeDocumentWord.model,
+                query = new RadicalPostgrest.Query({
+                    predicates: [model.recipe_document_id.equals(this.props.document.recipe_document_id)]
+            });
+            api.data.recipeDocumentWord.read(query);
         }
     }
 
@@ -174,7 +180,11 @@ export class FormattedDocument extends React.Component<any, any> {
         var document = this.props.document,
             tags = document ? document.tags.size : null;
         if (document && !tags) {
-            api.crud.recipeDocumentWordTag.loadDocumentWordTags(document.recipe_document_id);
+            let model = api.data.recipeDocumentWordTag.model,
+                query = new RadicalPostgrest.Query({
+                    predicates: [model.recipe_document_id.equals(document.recipe_document_id)]
+                });
+            api.data.recipeDocumentWordTag.read(query);
         }
     }
 
@@ -183,7 +193,7 @@ export class FormattedDocument extends React.Component<any, any> {
             selectionHtml = selection.toHtml(),
             elements = jQuery(selectionHtml),
             getWordElements = el => el.find('span.document-word').add(el.filter('span.document-word')),
-            wordElements, parentNode, ids;
+            wordElements, parentNode, wordIds, words;
         if (selectionHtml.length > 0) {
             wordElements = getWordElements(elements);
             if (wordElements.length == 0) {
@@ -193,8 +203,9 @@ export class FormattedDocument extends React.Component<any, any> {
                     wordElements = jQuery(parentNode);
                 }
             }
-            ids = wordElements.map((i, el) => parseInt(el.id));
-            api.crud.recipeDocument.setSelectedWordIDs(ids);
+            wordIds = new Set(wordElements.map((i, el) => parseInt(el.id)));
+            words = api.data.recipeDocumentWord.instances().filter(word => words.has(word.recipe_document_word_id));
+            api.data.recipeDocumentWord.setSelectedWords(words);
             this.setState({selectionRect: selection.getRangeAt(0).nativeRange.getBoundingClientRect()})
         } else {
             this.setState({selectionRect: null});
@@ -229,7 +240,7 @@ export class FormattedDocument extends React.Component<any, any> {
 }
 
 interface IListProperties {
-    items: Immutable.Iterable<any, Immutable.List<crud.RecipeDocumentWord>>;
+    items: Immutable.Iterable<any, Immutable.List<data.RecipeDocumentWord>>;
     key: number;
 }
 
@@ -243,7 +254,7 @@ class List extends React.Component<IListProperties, any> {
 }
 
 interface ITagProperties {
-    words: Immutable.List<crud.RecipeDocumentWord>;
+    words: Immutable.List<data.RecipeDocumentWord>;
     key: number;
 }
 
@@ -320,7 +331,7 @@ class Heading6 extends React.Component<ITagProperties, any> {
 }
 
 interface IDocumentWordProperties {
-    word: crud.RecipeDocumentWord;
+    word: data.RecipeDocumentWord;
     key: number;
 }
 
@@ -328,7 +339,7 @@ class DocumentWord extends React.Component<IDocumentWordProperties, any> {
     render() {
         var word = this.props.word,
             text = word.original_format ? word.original_format : word.word,
-            tags = api.crud.recipeDocumentWordTag.getTagsForWord(this.props.word),
+            tags = api.data.recipeDocumentWordTag.getTagsForWord(this.props.word),
             classes = tags.reduce((old, current) => old + " " + current.tag, "document-word");
         return (
             <span className={classes} id={word.recipe_document_word_id.toString()}>{text}</span>
@@ -339,8 +350,8 @@ class DocumentWord extends React.Component<IDocumentWordProperties, any> {
 class TagPallet extends React.Component<any, any> {
 
     render() {
-        var selectedWords = api.crud.recipeDocument.getSelectedWords(),
-            selectedWordTags = api.crud.recipeDocumentWordTag.getCommonTagsForWords(selectedWords),
+        var selectedWords = api.data.recipeDocumentWord.getSelectedWords(),
+            selectedWordTags = api.data.recipeDocumentWordTag.getCommonTagsForWords(selectedWords),
             tagger;
         if (selectedWordTags.contains("ingredients-list")) {
             tagger = <IngredientListTagger/>;
@@ -361,12 +372,12 @@ class TagPallet extends React.Component<any, any> {
 class Tagger extends React.Component<any, any> {
     addTag(tagText) {
         return () => {
-            return api.crud.recipeDocumentWordTag.create(tagText, api.crud.recipeDocument.getSelectedWordIDs());
+            return api.data.recipeDocumentWordTag.create(tagText, api.data.recipeDocumentWord.getSelectedWords());
         }
     }
 
     handleKeyPress(e) {
-        var addTag = tag => api.crud.recipeDocumentWordTag.create(tag, api.crud.recipeDocument.getSelectedWordIDs());
+        var addTag = tag => api.data.recipeDocumentWordTag.create(tag, api.data.recipeDocumentWord.getSelectedWords());
         switch (e.keyCode) {
             case 84:
                 addTag("title");
@@ -415,7 +426,7 @@ class Tagger extends React.Component<any, any> {
 class IngredientListTagger extends Tagger {
 
     handleKeyPress(e) {
-        var addTag = tag => api.crud.recipeDocumentWordTag.create(tag, api.crud.recipeDocument.getSelectedWordIDs());
+        var addTag = tag => api.data.recipeDocumentWordTag.create(tag, api.data.recipeDocumentWord.getSelectedWords());
         switch (e.key) {
             case 72:
                 addTag("ingredients-heading");
@@ -460,7 +471,7 @@ interface SelectionTagListProperties {
 class TimeTagger extends Tagger {
     
     handleKeyPress(e) {
-        var addTag = tag => api.crud.recipeDocumentWordTag.create(tag, api.crud.recipeDocument.getSelectedWordIDs());
+        var addTag = tag => api.data.recipeDocumentWordTag.create(tag, api.data.recipeDocumentWord.getSelectedWords());
         switch (e.key) {
             case 80:
                 addTag("preparation-time");
@@ -491,7 +502,7 @@ class TimeTagger extends Tagger {
 class TimeSubTagger extends Tagger {
     
     handleKeyPress(e) {
-        var addTag = tag => api.crud.recipeDocumentWordTag.create(tag, api.crud.recipeDocument.getSelectedWordIDs());
+        var addTag = tag => api.data.recipeDocumentWordTag.create(tag, api.data.recipeDocumentWord.getSelectedWords());
         switch (e.key) {
             case 80:
                 addTag("time-label");
@@ -528,9 +539,9 @@ interface SelectionTagProperties {
 class SelectionTag extends React.Component<SelectionTagProperties, any> {
 
     deleteTagForWords() {
-        var selectedWords = api.crud.recipeDocument.getSelectedWords(),
-            selectedWordTags = api.crud.recipeDocumentWordTag.getTagsForWords(selectedWords);
-        api.crud.recipeDocumentWordTag.delete(selectedWordTags);
+        var selectedWords = api.data.recipeDocumentWord.getSelectedWords(),
+            selectedWordTags = api.data.recipeDocumentWordTag.getTagsForWords(selectedWords);
+        api.data.recipeDocumentWordTag.delete(selectedWordTags);
     }
 
     render() {

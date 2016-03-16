@@ -4,6 +4,7 @@
 
 import Radical = require('radical');
 import RadicalPostgrest = require('radical-postgrest');
+import {RecipeDocumentTagSetService} from "./crud-old";
 
 
 const RecipeDocumentWordRecord = Immutable.Record({
@@ -31,6 +32,7 @@ export class RecipeDocumentWord extends RecipeDocumentWordRecord {
 class RecipeDocumentWordModel extends RadicalPostgrest.Model {
     name = "recipe_document_word";
     recipe_document_word_id = new RadicalPostgrest.NumericField({primary: true});
+    recipe_document_id = new RadicalPostgrest.NumericField();
     word = new RadicalPostgrest.TextField();
     document_position = new RadicalPostgrest.NumericField();
     element_position = new RadicalPostgrest.NumericField();
@@ -41,15 +43,15 @@ class RecipeDocumentWordModel extends RadicalPostgrest.Model {
 
 class RecipeDocumentWordService extends RadicalPostgrest.CollectionDataService {
     defaultState = Immutable.fromJS({instances: {}, selected: []});
-    model = RecipeDocumentWordModel.create();
+    model = RecipeDocumentWordModel.create() as RecipeDocumentWordModel;
     url = "/crud/";
 
-    setSelectedWords = Radical.CollectionAction.create(function (words) {
-
+    setSelectedWords = Radical.CollectionAction.create(function (action, words: Immutable.Iterable<any, RecipeDocumentWord>) {
+        this.getStore().dispatch({type: action.type, selected: words});
     });
 
     getSelectedWords = Radical.CollectionAction.create(function () {
-
+        return this.getState().get("selected");
     });
 }
 
@@ -62,6 +64,7 @@ const RecipeDocumentWordTagRecord = Immutable.Record({
 export class RecipeDocumentWordTag extends RecipeDocumentWordTagRecord {
     recipe_document_word_tag_id: number;
     recipe_document_word_id: number;
+    recipe_document_id: number;
     tag: string;
 
     static create(o) {
@@ -73,13 +76,14 @@ class RecipeDocumentWordTagModel extends RadicalPostgrest.Model {
     name = "recipe_document_word_tag";
     recipe_document_word_tag_id = new RadicalPostgrest.NumericField({primary: true});
     recipe_document_word_id = new RadicalPostgrest.NumericField();
+    recipe_document_id = new RadicalPostgrest.NumericField();
     tag = new RadicalPostgrest.TextField();
     factory = RecipeDocumentWordTag.create;
 }
 
 class RecipeDocumentWordTagService extends RadicalPostgrest.CollectionDataService {
     defaultState = Immutable.fromJS({instances: {}});
-    model = RecipeDocumentWordTagModel.create();
+    model = RecipeDocumentWordTagModel.create() as RecipeDocumentWordTagModel;
     url = "/crud/";
 
     getTagsForWord = Radical.CollectionAction.create(function (action, word: RecipeDocumentWord) {
@@ -132,8 +136,8 @@ export class RecipeDocumentModel extends RadicalPostgrest.Model {
 }
 
 class RecipeDocumentService extends RadicalPostgrest.CollectionDataService {
-    defaultState = Immutable.fromJS({instances: {}});
-    model = RecipeDocumentModel.create();
+    defaultState = Immutable.fromJS({instances: {}, selected: null});
+    model = RecipeDocumentModel.create() as RecipeDocumentModel;
     url = "/crud/";
 
     getDocument = Radical.CollectionAction.create(function (action, recipeDocumentId) {
@@ -143,4 +147,18 @@ class RecipeDocumentService extends RadicalPostgrest.CollectionDataService {
     getDocuments = Radical.CollectionAction.create(function (action, recipeDocumentIds: Set<number>) {
         return this.instances().filter(instance => recipeDocumentIds.has(instance.recipe_document_id));
     });
+
+    setSelectedDocument = Radical.CollectionAction.create(function (action, document: RecipeDocument) {
+        this.getStore().dispatch({type: action.type, selected: document});
+    });
+
+    getSelectedDocument = Radical.CollectionAction.create(function () {
+        return this.getState().get("selected");
+    })
+}
+
+export class DataServiceManager extends Radical.CollectionNamespace {
+    recipeDocument = RecipeDocumentService.create() as RecipeDocumentService;
+    recipeDocumentWord = RecipeDocumentWordService.create() as RecipeDocumentWordService;
+    recipeDocumentWordTag = RecipeDocumentWordTagService.create() as RecipeDocumentWordTagService;
 }
