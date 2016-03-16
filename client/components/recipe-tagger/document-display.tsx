@@ -1,7 +1,9 @@
 /// <reference path="../../definitions/react/react.d.ts" />
 /// <reference path="../../definitions/react/react-global.d.ts" />
 /// <reference path="../../definitions/immutable/immutable.d.ts" />
+/// <reference path="../../definitions/jquery/jquery.d.ts" />
 /// <reference path="../../definitions/rangy/rangy.d.ts" />
+
 
 import api = require('api');
 import data = require('data');
@@ -168,11 +170,10 @@ export class FormattedDocument extends React.Component<any, any> {
         var document = this.props.document,
             words = document ? document.words.size : null;
         if (document && !words) {
-            let model = api.data.recipeDocumentWord.model,
-                query = new RadicalPostgrest.Query({
-                    predicates: [model.recipe_document_id.equals(this.props.document.recipe_document_id)]
+            let model = api.data.recipeDocumentWord.model;
+            api.data.recipeDocumentWord.read({
+                predicates: [model.recipe_document_id.equals(this.props.document.recipe_document_id)]
             });
-            api.data.recipeDocumentWord.read(query);
         }
     }
 
@@ -180,11 +181,10 @@ export class FormattedDocument extends React.Component<any, any> {
         var document = this.props.document,
             tags = document ? document.tags.size : null;
         if (document && !tags) {
-            let model = api.data.recipeDocumentWordTag.model,
-                query = new RadicalPostgrest.Query({
-                    predicates: [model.recipe_document_id.equals(document.recipe_document_id)]
-                });
-            api.data.recipeDocumentWordTag.read(query);
+            let model = api.data.recipeDocumentWordTag.model;
+            api.data.recipeDocumentWordTag.read({
+                predicates: [model.recipe_document_id.equals(document.recipe_document_id)]
+            });
         }
     }
 
@@ -369,15 +369,12 @@ class TagPallet extends React.Component<any, any> {
     }
 }
 
-class Tagger extends React.Component<any, any> {
-    addTag(tagText) {
-        return () => {
-            return api.data.recipeDocumentWordTag.create(tagText, api.data.recipeDocumentWord.getSelectedWords());
-        }
-    }
+const addTag = (tag) => {
+    return api.data.recipeDocumentWordTag.createTagForWords(tag, api.data.recipeDocumentWord.getSelectedWords());
+};
 
+class Tagger extends React.Component<any, any> {
     handleKeyPress(e) {
-        var addTag = tag => api.data.recipeDocumentWordTag.create(tag, api.data.recipeDocumentWord.getSelectedWords());
         switch (e.keyCode) {
             case 84:
                 addTag("title");
@@ -408,15 +405,15 @@ class Tagger extends React.Component<any, any> {
     render() {
         return (
             <div className="btn-group" onKeyPress={this.handleKeyPress}>
-                <button onClick={this.addTag("title")} className="btn btn-default btn-small"><u>T</u>itle
+                <button onClick={addTag("title")} className="btn btn-default btn-small"><u>T</u>itle
                 </button>
-                <button onClick={this.addTag("ingredients")} className="btn btn-default btn-small"><u>I</u>ngredients
+                <button onClick={addTag("ingredients")} className="btn btn-default btn-small"><u>I</u>ngredients
                 </button>
-                <button onClick={this.addTag("directions")} className="btn btn-default btn-small"><u>D</u>irections
+                <button onClick={addTag("directions")} className="btn btn-default btn-small"><u>D</u>irections
                 </button>
-                <button onClick={this.addTag("time")} className="btn btn-default btn-small">Ti<u>m</u>e
+                <button onClick={addTag("time")} className="btn btn-default btn-small">Ti<u>m</u>e
                 </button>
-                <button onClick={this.addTag("yield")} className="btn btn-default btn-small"><u>Y</u>ield
+                <button onClick={addTag("yield")} className="btn btn-default btn-small"><u>Y</u>ield
                 </button>
             </div>
         )
@@ -426,7 +423,6 @@ class Tagger extends React.Component<any, any> {
 class IngredientListTagger extends Tagger {
 
     handleKeyPress(e) {
-        var addTag = tag => api.data.recipeDocumentWordTag.create(tag, api.data.recipeDocumentWord.getSelectedWords());
         switch (e.key) {
             case 72:
                 addTag("ingredients-heading");
@@ -449,15 +445,15 @@ class IngredientListTagger extends Tagger {
     render() {
         return (
             <div className="btn-group">
-                <button onClick={this.addTag("ingredients-heading")} className="btn btn-default btn-small"><u>H</u>eading
+                <button onClick={addTag("ingredients-heading")} className="btn btn-default btn-small"><u>H</u>eading
                 </button>
-                <button onClick={this.addTag("ingredient-quantity")} className="btn btn-default btn-small"><u>Q</u>uantity
+                <button onClick={addTag("ingredient-quantity")} className="btn btn-default btn-small"><u>Q</u>uantity
                 </button>
-                <button onClick={this.addTag("ingredient-units")} className="btn btn-default btn-small"><u>U</u>nit
+                <button onClick={addTag("ingredient-units")} className="btn btn-default btn-small"><u>U</u>nit
                 </button>
-                <button onClick={this.addTag("ingredient-name")} className="btn btn-default btn-small"><u>N</u>ame
+                <button onClick={addTag("ingredient-name")} className="btn btn-default btn-small"><u>N</u>ame
                 </button>
-                <button onClick={this.addTag("ingredient-preparation")} className="btn btn-default btn-small"><u>P</u>reparation
+                <button onClick={addTag("ingredient-preparation")} className="btn btn-default btn-small"><u>P</u>reparation
                 </button>
             </div>
         )
@@ -471,7 +467,6 @@ interface SelectionTagListProperties {
 class TimeTagger extends Tagger {
     
     handleKeyPress(e) {
-        var addTag = tag => api.data.recipeDocumentWordTag.create(tag, api.data.recipeDocumentWord.getSelectedWords());
         switch (e.key) {
             case 80:
                 addTag("preparation-time");
@@ -488,11 +483,11 @@ class TimeTagger extends Tagger {
     render() {
         return (
             <div className="btn-group">
-                <button onClick={this.addTag("preparation-time")} className="btn btn-default btn-small"><u>P</u>reparation
+                <button onClick={addTag("preparation-time")} className="btn btn-default btn-small"><u>P</u>reparation
                 </button>
-                <button onClick={this.addTag("cooking-time")} className="btn btn-default btn-small"><u>C</u>ooking
+                <button onClick={addTag("cooking-time")} className="btn btn-default btn-small"><u>C</u>ooking
                 </button>
-                <button onClick={this.addTag("total-time")} className="btn btn-default btn-small"><u>T</u>otal
+                <button onClick={addTag("total-time")} className="btn btn-default btn-small"><u>T</u>otal
                 </button>
             </div>
         )
@@ -502,7 +497,6 @@ class TimeTagger extends Tagger {
 class TimeSubTagger extends Tagger {
     
     handleKeyPress(e) {
-        var addTag = tag => api.data.recipeDocumentWordTag.create(tag, api.data.recipeDocumentWord.getSelectedWords());
         switch (e.key) {
             case 80:
                 addTag("time-label");
@@ -516,7 +510,7 @@ class TimeSubTagger extends Tagger {
     render() {
         return (
             <div className="btn-group">
-                <button onClick={this.addTag("time-value")} className="btn btn-default btn-small"><u>V</u>alue
+                <button onClick={addTag("time-value")} className="btn btn-default btn-small"><u>V</u>alue
                 </button>
             </div>
         )
@@ -538,10 +532,9 @@ interface SelectionTagProperties {
 
 class SelectionTag extends React.Component<SelectionTagProperties, any> {
 
-    deleteTagForWords() {
-        var selectedWords = api.data.recipeDocumentWord.getSelectedWords(),
-            selectedWordTags = api.data.recipeDocumentWordTag.getTagsForWords(selectedWords);
-        api.data.recipeDocumentWordTag.delete(selectedWordTags);
+    deleteTagForSelectedWords() {
+        var selectedWords = api.data.recipeDocumentWord.getSelectedWords();
+        api.data.recipeDocumentWordTag.deleteTagForWords(this.props.tag, selectedWords);
     }
 
     render() {
@@ -550,7 +543,7 @@ class SelectionTag extends React.Component<SelectionTagProperties, any> {
             <li>
                 <span className={tagClass}>{this.props.tag}
                     <button style={{background: "none", border: "none"}}>
-                        <span onClick={this.deleteTagForWords} className="glyphicon glyphicon-remove"/>
+                        <span onClick={this.deleteTagForSelectedWords} className="glyphicon glyphicon-remove"/>
                     </button>
                 </span>
             </li>

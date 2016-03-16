@@ -198,7 +198,7 @@ export class Query implements IQuery {
 }
 
 export interface IModel {
-    name?: string;
+    modelName?: string;
     fields?: Field[];
     index?: (instance: any) => any;
     factory?: (instance: any) => any;
@@ -207,7 +207,7 @@ export interface IModel {
 export class Model {
 
     protected primary;
-    name: string;
+    modelName: string;
 
     constructor(config?: IModel) {
         this.configure(config);
@@ -215,7 +215,7 @@ export class Model {
 
     configure(config?: IModel) {
         if (config) {
-            if (config.name) this.name = config.name;
+            if (config.modelName) this.modelName = config.modelName;
             if (config.index) this.index = config.index;
             if (config.factory) this.factory = config.factory;
             if (config.fields) {
@@ -305,10 +305,11 @@ export class Read extends CollectionCrudAction {
         headers: ['Range-Unit: items']
     });
 
-    initiator = function(action, query: Query) {
+    initiator = function(action, query: IQuery) {
+        let q = query instanceof Query ? query : new Query(query);
         action.endpoint.execute({
-            headers: query.requestHeaders(),
-            arguments: query.urlArguments(),
+            headers: q.requestHeaders(),
+            arguments: q.urlArguments(),
             success: response => {
                 action.getStore().dispatch({type: action.name, instances: response})
             }
@@ -323,11 +324,12 @@ export class Update extends CollectionCrudAction {
         headers: ['Prefer: return=representation']
     });
 
-    initiator = function(action, query: Query, data) {
+    initiator = function(action, query: IQuery, data) {
+        let q = query instanceof Query ? query : new Query(query);
         action.endpoint.execute({
             data: data,
-            headers: query.requestHeaders(),
-            arguments: query.urlArguments(),
+            headers: q.requestHeaders(),
+            arguments: q.urlArguments(),
             success: response => {
                 action.getStore().dispatch({type: action.name, instances: response})
             }
@@ -342,10 +344,11 @@ export class Delete extends CollectionCrudAction {
         headers: ['Prefer: return=representation']
     });
 
-    initiator = function(action, query: Query) {
+    initiator = function(action, query: IQuery) {
+        let q = query instanceof Query ? query : new Query(query);
         action.endpoint.execute({
-            headers: query.requestHeaders(),
-            arguments: query.urlArguments(),
+            headers: q.requestHeaders(),
+            arguments: q.urlArguments(),
             success: response => {
                 action.getStore().dispatch({type: action.name, instances: response})
             }

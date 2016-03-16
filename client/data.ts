@@ -4,7 +4,6 @@
 
 import Radical = require('radical');
 import RadicalPostgrest = require('radical-postgrest');
-import {RecipeDocumentTagSetService} from "./crud-old";
 
 
 const RecipeDocumentWordRecord = Immutable.Record({
@@ -18,6 +17,7 @@ const RecipeDocumentWordRecord = Immutable.Record({
 
 export class RecipeDocumentWord extends RecipeDocumentWordRecord {
     recipe_document_word_id: number;
+    recipe_document_id: number;
     word: string;
     document_position: number;
     element_position: number;
@@ -30,7 +30,7 @@ export class RecipeDocumentWord extends RecipeDocumentWordRecord {
 }
 
 class RecipeDocumentWordModel extends RadicalPostgrest.Model {
-    name = "recipe_document_word";
+    modelName = "recipe_document_word";
     recipe_document_word_id = new RadicalPostgrest.NumericField({primary: true});
     recipe_document_id = new RadicalPostgrest.NumericField();
     word = new RadicalPostgrest.TextField();
@@ -73,7 +73,7 @@ export class RecipeDocumentWordTag extends RecipeDocumentWordTagRecord {
 }
 
 class RecipeDocumentWordTagModel extends RadicalPostgrest.Model {
-    name = "recipe_document_word_tag";
+    modelName = "recipe_document_word_tag";
     recipe_document_word_tag_id = new RadicalPostgrest.NumericField({primary: true});
     recipe_document_word_id = new RadicalPostgrest.NumericField();
     recipe_document_id = new RadicalPostgrest.NumericField();
@@ -102,6 +102,23 @@ class RecipeDocumentWordTagService extends RadicalPostgrest.CollectionDataServic
             commonTags = words.rest().reduce(getCommonTags, Immutable.Set(tags));
         return commonTags;
     });
+
+    deleteTagForWords = Radical.CollectionAction.create(function(action, tag: string, words: Immutable.Iterable<any, RecipeDocumentWord>) {
+        let wordIds = words.map(word => word.recipe_document_word_id);
+        this.delete({predicates: [this.model.tag.equals(tag), this.model.recipe_document_word_id.in(wordIds)]})
+    });
+
+    private createTagForWord(tag: string, word: RecipeDocumentWord) {
+        return {
+            recipe_document_id: word.recipe_document_word_id,
+            recipe_document_word_id: word.recipe_document_word_id,
+            tag: tag
+        }
+    }
+
+    createTagForWords = Radical.CollectionAction.create(function (action, tag: string, words: Immutable.Iterable<any, RecipeDocumentWord>) {
+        this.create(words.map((word) => this.createTagForWord(tag, word)).toJS());
+    });
 }
 
 const RecipeDocumentRecord = Immutable.Record({
@@ -127,7 +144,7 @@ export class RecipeDocument extends RecipeDocumentRecord {
 }
 
 export class RecipeDocumentModel extends RadicalPostgrest.Model {
-    name = "recipe_document";
+    modelName = "recipe_document";
     recipe_document_id = new RadicalPostgrest.NumericField({primary: true});
     title = new RadicalPostgrest.TextField();
     html = new RadicalPostgrest.TextField();
