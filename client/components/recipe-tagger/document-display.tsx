@@ -1,5 +1,6 @@
 /// <reference path="../../definitions/react/react.d.ts" />
 /// <reference path="../../definitions/react/react-global.d.ts" />
+/// <reference path="../../definitions/react-redux/react-redux.d.ts" />
 /// <reference path="../../definitions/immutable/immutable.d.ts" />
 /// <reference path="../../definitions/jquery/jquery.d.ts" />
 /// <reference path="../../definitions/rangy/rangy.d.ts" />
@@ -10,6 +11,7 @@ import data = require('data');
 import React = require('react');
 import jQuery = require('jquery');
 import Immutable = require('immutable');
+import ReactRedux = require('react-redux');
 import RadicalPostgrest = require('radical-postgrest');
 
 
@@ -36,10 +38,9 @@ export class DocumentList extends React.Component<IDocumentListProperties, any> 
 class DocumentListEntry extends React.Component<any, any> {
     render() {
         let document = this.props.document,
-            onClick = () => {
-                return api.data.recipeDocument.setSelectedDocument(document);
-            };
-        if (api.data.recipeDocument.getSelectedDocument().recipe_document_id == document.recipe_document_id) {
+            selectedDocument = api.data.recipeDocument.getSelectedDocument(),
+            onClick = () => api.data.recipeDocument.setSelectedDocument(document);
+        if (selectedDocument && selectedDocument.recipe_document_id == document.recipe_document_id) {
             return (
                 <li className="active">{document.title}</li>
             )
@@ -67,6 +68,20 @@ function interleaveSpaces(words: Immutable.List<data.RecipeDocumentWord>) {
     return elements;
 }
 
+function getFormattedDocumentProps() {
+    let document = api.data.recipeDocument.getSelectedDocument(),
+        wordIsForDocument = word => word.recipe_document_id == document.recipe_document_id,
+        tagIsForDocument = tag => tag.recipe_document_id == document.recipe_document_id,
+        words = document ? api.data.recipeDocumentWord.instances().filter(wordIsForDocument) : Immutable.List(),
+        tags = document ? api.data.recipeDocumentWordTag.instances().filter(tagIsForDocument) : Immutable.List();
+    return {
+        document: document,
+        words: words,
+        tags: tags
+    }
+}
+
+@ReactRedux.connect(getFormattedDocumentProps)
 export class FormattedDocument extends React.Component<any, any> {
 
     constructor() {
@@ -204,7 +219,7 @@ export class FormattedDocument extends React.Component<any, any> {
                 }
             }
             wordIds = new Set(wordElements.map((i, el) => parseInt(el.id)));
-            words = api.data.recipeDocumentWord.instances().filter(word => words.has(word.recipe_document_word_id));
+            words = api.data.recipeDocumentWord.instances().filter(word => wordIds.has(word.recipe_document_word_id));
             api.data.recipeDocumentWord.setSelectedWords(words);
             this.setState({selectionRect: selection.getRangeAt(0).nativeRange.getBoundingClientRect()})
         } else {
@@ -232,7 +247,8 @@ export class FormattedDocument extends React.Component<any, any> {
 
     render() {
         let document = this.props.document,
-            words = document ? FormattedDocument.tagWordsToMarkup(document.words) : '',
+            // FIXME: document.words
+            words = document ? FormattedDocument.tagWordsToMarkup(this.props.words) : '',
             rect = this.state.selectionRect,
             tagPallet = rect ? <TagPallet top={rect.top} left={rect.right + 50}/> : '';
         return (<div onMouseUp={this.selectWords}>{words}{tagPallet}</div>);

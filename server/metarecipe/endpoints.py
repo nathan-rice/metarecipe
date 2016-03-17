@@ -11,6 +11,7 @@ crud = Blueprint('crud', __name__)
 
 recipe_creation = Blueprint('recipe_creation', __name__)
 
+
 @recipe_search.route('/site/food_network/')
 def food_network():
     search_term = request.args.get("search")

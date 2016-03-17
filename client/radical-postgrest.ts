@@ -22,6 +22,10 @@ export class Field implements IField {
     }
 
     protected configure(config?: IField) {
+        if (config) {
+            if (config.name) this.name = config.name;
+            if (config.primary) this.primary = config.primary;
+        }
         this.not = new this.notField(config);
         // Since the not property has to exist on the not-field, might as well make it semi-functional
         this.not.not = this;
@@ -148,7 +152,7 @@ class Predicate implements IPredicate {
     }
 
     toUrlArgument() {
-        return {argument: this.field, value: this.operator + '.' + this.value}
+        return new radical.RequestArgument(this.field, this.operator + '.' + this.value);
     }
 }
 
@@ -266,7 +270,6 @@ class CollectionCrudAction extends radical.CollectionAction implements ICrudActi
             if (config.model) this.model = config.model;
         }
         super.configure(config);
-        if (this.model.modelName && this.name) this.name = this.model.modelName + ": " + this.name;
         return this;
     }
 
@@ -394,10 +397,12 @@ export class CollectionDataService extends radical.CollectionNamespace implement
 
         if (!this.url.endsWith("/")) this.url = this.url + "/";
 
-        this.reconfigureAction(this.create);
-        this.reconfigureAction(this.read);
-        this.reconfigureAction(this.update);
-        this.reconfigureAction(this.delete);
+        if (this.model) {
+            this.reconfigureAction(this.create);
+            this.reconfigureAction(this.read);
+            this.reconfigureAction(this.update);
+            this.reconfigureAction(this.delete);
+        }
 
         super.configure(config);
         return this;
@@ -408,7 +413,7 @@ export class CollectionDataService extends radical.CollectionNamespace implement
         action.configure({
             model: model,
             name: model.modelName + ": " + action.name,
-            endpoint: action.endpoint.configure({url: action.endpoint.url || (this.url + action.model.modelName)})
+            endpoint: action.endpoint.configure({url: action.endpoint.url || (this.url + model.modelName)})
         });
     }
 

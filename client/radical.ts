@@ -34,6 +34,10 @@ interface IEndpointArgumentContainer {
     [key: string]: IEndpointInput;
 }
 
+export class RequestArgument {
+    constructor(public argument: string, public value: string) {}
+}
+
 interface IEndpoint {
     url?: string;
     method?: string;
@@ -87,15 +91,17 @@ export class Endpoint implements IEndpoint {
     }
 
     private toQueryString = (data: Object) => {
-        let key, value, queryArgs = [];
+        let key, arg, value, queryArgs = [];
         for (key in data) {
             // Handle array-like
-            if (typeof key == "number") {
+            if (data[key] instanceof RequestArgument) {
+                arg = data[key].argument;
                 value = this.convert(data[key].argument, data[key].value);
             } else {
+                arg = key;
                 value = this.convert(key, data[key]);
             }
-            queryArgs.push(key + "=" + encodeURIComponent(value));
+            queryArgs.push(arg + "=" + encodeURIComponent(value));
 
         }
         return queryArgs.join("&");
@@ -187,6 +193,7 @@ export class ApiComponent {
             if (config.defaultState) this.defaultState = config.defaultState;
             if (config.name) this.name = config.name;
         }
+        if (!this.name) this.name = (this.constructor as any).name;
         return this;
     }
 
@@ -301,13 +308,15 @@ export class Namespace extends ApiComponent implements INamespace {
 
     configure(config?: INamespace) {
         super.configure(config);
-        for (let key in this) {
+        let key;
+        for (key in this) {
             // This ensures consistent behavior for ApiComponents defined on a namespace as part of a class declaration
-            if (this[key] instanceof ApiComponent && !this.mountLocation(this[key])) this.mount(key, this[key]);
+            if (this[key] instanceof ApiComponent && !this.mountLocation(this[key])) this.components[key] = this[key];
         }
-        if (config && config.components) {
-            this.mountAll(config.components);
+        if (config) {
+            for (key in config.components) this.components[key] = config.components[key];
         }
+        this.mountAll(this.components);
         return this;
     }
 
@@ -322,13 +331,17 @@ export class Namespace extends ApiComponent implements INamespace {
         return this;
     }
 
+    protected nameComponent(component, location) {
+        component.configure({name: this.name + ": " + location})
+    }
+
     mount(location: string, component: ApiComponent, stateLocation?: string): Namespace {
-        this.components[location] = component;
         component.parent = this;
         if (component instanceof Action) {
             // Actions with an undefined state location operate on the parent Namespace's entire state
             this._stateLocation[location] = stateLocation;
             this[location] = component.initiator.bind(this, component);
+            if (!component.name) this.nameComponent(component, location);
         } else {
             // Namespaces *must* have a state location, we'll use the mount location if necessary
             this._stateLocation[location] = stateLocation || location;

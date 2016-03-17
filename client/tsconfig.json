@@ -1,0 +1,8 @@
+{
+  "version": "1.8.0",
+  "compilerOptions": {
+    "module": "amd",
+    "jsx": "react",
+    "experimentalDecorators": true
+  }
+}

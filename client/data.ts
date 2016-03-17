@@ -9,6 +9,7 @@ import RadicalPostgrest = require('radical-postgrest');
 
 const RecipeDocumentWordRecord = Immutable.Record({
     recipe_document_word_id: 0,
+    recipe_document_id: 0,
     word: '',
     document_position: 0,
     element_position: 0,
@@ -48,7 +49,7 @@ class RecipeDocumentWordService extends RadicalPostgrest.CollectionDataService {
     url = "/crud/";
 
     setSelectedWords = Radical.CollectionAction.create(function (action, words: Immutable.Iterable<any, RecipeDocumentWord>) {
-        this.getStore().dispatch({type: action.type, selected: words});
+        this.getStore().dispatch({type: action.name, selected: words});
     });
 
     getSelectedWords = Radical.CollectionAction.create(function () {
@@ -59,6 +60,7 @@ class RecipeDocumentWordService extends RadicalPostgrest.CollectionDataService {
 const RecipeDocumentWordTagRecord = Immutable.Record({
     recipe_document_word_tag_id: 0,
     recipe_document_word_id: 0,
+    recipe_document_id: 0,
     tag: ''
 });
 
@@ -136,8 +138,6 @@ export class RecipeDocument extends RecipeDocumentRecord {
     title: string;
     html: string;
     url: string;
-    words: Immutable.List<RecipeDocumentWord>;
-    tags: Immutable.List<RecipeDocumentWordTag>;
 
     static create(o) {
         return new RecipeDocument(o);
@@ -167,7 +167,7 @@ class RecipeDocumentService extends RadicalPostgrest.CollectionDataService {
     });
 
     setSelectedDocument = Radical.CollectionAction.create(function (action, document: RecipeDocument) {
-        this.getStore().dispatch({type: action.type, selected: document});
+        this.getStore().dispatch({type: action.name, selected: document});
     });
 
     getSelectedDocument = Radical.CollectionAction.create(function () {

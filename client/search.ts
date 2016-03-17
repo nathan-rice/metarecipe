@@ -112,38 +112,42 @@ class RecipeSiteSearch extends CollectionNamespace {
     getResults = CollectionAction.create(function (action) {
         return action.getState().get("results");
     });
+    toggleRetrieval = ToggleRetrieval.create();
+    retrieveAll = RetrieveAll.create();
+    retrieveNone = RetrieveNone.create();
+
 }
 
 class FoodNetworkRecipeSearch extends RecipeSiteSearch {
-    name = "Food Network Recipe Search";
+    //name = "Food Network Recipe Search";
     search = Search.create({
-        name: "Food Network Recipe Search: search",
+        //name: "Food Network Recipe Search: search",
         endpoint: new JsonEndpoint({url: "/search/site/food_network/"})
     });
-    toggleRetrieval = ToggleRetrieval.create({name: "Food Network Recipe Search: toggle retrieval"});
-    retrieveAll = RetrieveAll.create({name: "Food Network Recipe Search: retrieve all"});
-    retrieveNone = RetrieveNone.create({name: "Food Network Recipe Search: retrieve none"});
+    //toggleRetrieval = ToggleRetrieval.create({name: "Food Network Recipe Search: toggle retrieval"});
+    //retrieveAll = RetrieveAll.create({name: "Food Network Recipe Search: retrieve all"});
+    //retrieveNone = RetrieveNone.create({name: "Food Network Recipe Search: retrieve none"});
 }
 
 class FoodComRecipeSearch extends RecipeSiteSearch {
-    name = "Food.com Recipe Search";
+    //name = "Food.com Recipe Search";
     search = Search.create({
-        name: "Food.com Recipe Search: search",
+        //name: "Food.com Recipe Search: search",
         endpoint: new JsonEndpoint({url: "/search/site/food_com/"})
     });
-    toggleRetrieval = ToggleRetrieval.create({name: "Food.com Recipe Search: toggle retrieval"});
-    retrieveAll = RetrieveAll.create({name: "Food.com Recipe Search: retrieve all"});
-    retrieveNone = RetrieveNone.create({name: "Food.com Recipe Search: retrieve none"});
+    //toggleRetrieval = ToggleRetrieval.create({name: "Food.com Recipe Search: toggle retrieval"});
+    //retrieveAll = RetrieveAll.create({name: "Food.com Recipe Search: retrieve all"});
+    //retrieveNone = RetrieveNone.create({name: "Food.com Recipe Search: retrieve none"});
 }
 
 export class RecipeSearchManager extends CollectionNamespace {
-    name = "Recipe Search Manager";
+    //name = "Recipe Search Manager";
     defaultState = Immutable.fromJS({retrieve: []});
     foodNetwork = FoodNetworkRecipeSearch.create() as FoodNetworkRecipeSearch;
     foodCom = FoodComRecipeSearch.create() as FoodComRecipeSearch;
 
     retrieve = CollectionAction.create({
-        name: "Recipe Search Manager: retrieve all",
+        //name: "Recipe Search Manager: retrieve all",
         endpoint: new JsonEndpoint({method: "POST", url: "/search/retrieve/"}),
         initiator: function(action, results: Immutable.List<RecipeSearchResult>) {
             action.endpoint.execute({

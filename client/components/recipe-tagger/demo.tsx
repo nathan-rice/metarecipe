@@ -6,16 +6,16 @@ import ReactRedux = require('react-redux');
 import api = require('api');
 import DocumentDisplay = require('document-display')
 
-
-class BaseDemoInterface extends React.Component<any, any> {
+@ReactRedux.connect(getDemoInterfaceProps)
+export class DemoInterface extends React.Component<any, any> {
     render() {
         var documents = this.props.documents,
-            document = this.props.document;
+            document = this.props.document ? <DocumentDisplay.FormattedDocument/> : '';
         return (
             <div className="container">
                 <div className="row">
                     <div className="col-sm-8">
-                        <DocumentDisplay.FormattedDocument document={document}/>
+                        {document}
                     </div>
                 </div>
                 <div className="row">
@@ -31,9 +31,6 @@ class BaseDemoInterface extends React.Component<any, any> {
 function getDemoInterfaceProps(state) {
     return {
         document: state.data.getIn(["recipeDocument", "selected"]),
-        documents: state.data.getIn(["recipeDocument", "instances"]),
-        tags: state.data.getIn(["recipeDocumentWordTag", "instances"])
+        documents: state.data.getIn(["recipeDocument", "instances"])
     }
 }
-
-export const DemoInterface = ReactRedux.connect(getDemoInterfaceProps)(BaseDemoInterface);
