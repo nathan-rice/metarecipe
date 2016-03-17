@@ -2,6 +2,7 @@
 /// <reference path="definitions/redux/redux.d.ts" />
 /// <reference path="definitions/rangy/rangy.d.ts" />
 
+import Immutable = require('immutable');
 import Radical = require('radical');
 import RadicalPostgrest = require('radical-postgrest');
 
@@ -175,6 +176,7 @@ class RecipeDocumentService extends RadicalPostgrest.CollectionDataService {
 }
 
 export class DataServiceManager extends Radical.CollectionNamespace {
+    defaultState = Immutable.fromJS({});
     recipeDocument = RecipeDocumentService.create() as RecipeDocumentService;
     recipeDocumentWord = RecipeDocumentWordService.create() as RecipeDocumentWordService;
     recipeDocumentWordTag = RecipeDocumentWordTagService.create() as RecipeDocumentWordTagService;

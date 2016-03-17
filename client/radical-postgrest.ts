@@ -255,7 +255,7 @@ export class Model {
 }
 
 interface ICrudAction extends radical.IAction {
-    model: Model;
+    model?: Model;
 }
 
 class CollectionCrudAction extends radical.CollectionAction implements ICrudAction {
@@ -266,6 +266,7 @@ class CollectionCrudAction extends radical.CollectionAction implements ICrudActi
             if (config.model) this.model = config.model;
         }
         super.configure(config);
+        if (this.model.modelName && this.name) this.name = this.model.modelName + ": " + this.name;
         return this;
     }
 
@@ -305,7 +306,7 @@ export class Read extends CollectionCrudAction {
         headers: ['Range-Unit: items']
     });
 
-    initiator = function(action, query: IQuery) {
+    initiator = function(action, query?: IQuery) {
         let q = query instanceof Query ? query : new Query(query);
         action.endpoint.execute({
             headers: q.requestHeaders(),
@@ -324,7 +325,7 @@ export class Update extends CollectionCrudAction {
         headers: ['Prefer: return=representation']
     });
 
-    initiator = function(action, query: IQuery, data) {
+    initiator = function(action, data, query?: IQuery) {
         let q = query instanceof Query ? query : new Query(query);
         action.endpoint.execute({
             data: data,
@@ -344,7 +345,7 @@ export class Delete extends CollectionCrudAction {
         headers: ['Prefer: return=representation']
     });
 
-    initiator = function(action, query: IQuery) {
+    initiator = function(action, query?: IQuery) {
         let q = query instanceof Query ? query : new Query(query);
         action.endpoint.execute({
             headers: q.requestHeaders(),
@@ -375,10 +376,10 @@ export interface IDataService extends radical.INamespace {
 
 export class CollectionDataService extends radical.CollectionNamespace implements IDataService {
     model: Model;
-    create = Create.create();
-    read = Read.create();
-    update = Update.create();
-    delete = Delete.create();
+    create = Create.create({name: "create"});
+    read = Read.create({name: "read"});
+    update = Update.create({name: "update"});
+    delete = Delete.create({name: "delete"});
     url: string = "/";
 
     configure(config?: IDataService) {
@@ -393,20 +394,22 @@ export class CollectionDataService extends radical.CollectionNamespace implement
 
         if (!this.url.endsWith("/")) this.url = this.url + "/";
 
-        this.create.model = this.create.model || this.model;
-        this.create.endpoint.url = this.create.endpoint.url || this.url + this.create.model.name;
-
-        this.read.model = this.read.model || this.model;
-        this.read.endpoint.url = this.read.endpoint.url || this.url + this.read.model.name;
-
-        this.update.model = this.update.model || this.model;
-        this.update.endpoint.url = this.update.endpoint.url || this.url + this.update.model.name;
-
-        this.delete.model = this.delete.model || this.model;
-        this.delete.endpoint.url = this.delete.endpoint.url || this.url + this.delete.model.name;
+        this.reconfigureAction(this.create);
+        this.reconfigureAction(this.read);
+        this.reconfigureAction(this.update);
+        this.reconfigureAction(this.delete);
 
         super.configure(config);
         return this;
+    }
+
+    protected reconfigureAction(action) {
+        let model = action.model || this.model;
+        action.configure({
+            model: model,
+            name: model.modelName + ": " + action.name,
+            endpoint: action.endpoint.configure({url: action.endpoint.url || (this.url + action.model.modelName)})
+        });
     }
 
     instances() {
